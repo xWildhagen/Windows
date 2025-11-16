@@ -1,0 +1,33 @@
+#########
+# MAIN
+#########
+Git.Git
+Microsoft.OneDrive
+WireGuard.WireGuard
+RedHat.VirtViewer
+Logitech.GHUB
+Microsoft.Edge
+RazerInc.RazerInstaller.Synapse4
+RamenSoftware.Windhawk
+Microsoft.PowerShell
+Microsoft.PowerToys
+Microsoft.VisualStudioCode
+M2Team.NanaZip
+Microsoft.WindowsTerminal
+Mega.MEGASync
+Proton.ProtonVPN
+Microsoft.WSL
+
+#########
+# STUFF
+#########
+
+
+#########
+# GAMES
+#########
+Microsoft.GameInput
+MoonlightGameStreamingProject.Moonlight
+Valve.Steam
+# ElectronicArts.EADesktop
+# RiotGames.LeagueOfLegends.EUW
