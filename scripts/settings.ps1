@@ -20,9 +20,9 @@ $assetsRoot  = Join-Path $repoRoot 'assets'
 $wallpaperPath   = Join-Path $assetsRoot 'aurora.png'
 $profilePicPath  = Join-Path $assetsRoot 'catppuccin.png'
 
-Write-Host "Repo root:        $repoRoot"        -ForegroundColor DarkGray
-Write-Host "Wallpaper image:  $wallpaperPath"  -ForegroundColor Cyan
-Write-Host "Profile picture:  $profilePicPath" -ForegroundColor Cyan
+Write-Host "Repo root:        $repoRoot"
+Write-Host "Wallpaper image:  $wallpaperPath"
+Write-Host "Profile picture:  $profilePicPath" 
 
 # ---------------------------
 # Set 100% display scaling
@@ -44,7 +44,7 @@ if (-not (Test-Path $desktopKey)) {
 New-ItemProperty -Path $desktopKey -Name 'Win8DpiScaling' -PropertyType DWord -Value 1 -Force | Out-Null
 New-ItemProperty -Path $desktopKey -Name 'LogPixels'      -PropertyType DWord -Value $dpiValue -Force | Out-Null
 
-Write-Host "DPI scaling set to 100% (LogPixels=$dpiValue)." -ForegroundColor Green
+Write-Host "DPI scaling set to 100% (LogPixels=$dpiValue)." -ForegroundColor Blue
 
 # ---------------------------
 # Wallpaper (current user)
@@ -179,7 +179,6 @@ function Set-CustomAccountPicture {
     }
 
     Write-Host "Profile picture set for SID $userSid." -ForegroundColor Green
-    Write-Host "You may need to sign out and back in to see the new picture everywhere." -ForegroundColor Yellow
 }
 
 # ---------------------------
@@ -200,7 +199,7 @@ catch {
     Write-Warning "Failed to set profile picture: $_"
 }
 
-Write-Host "Done. Please sign out and back in (or reboot) to fully apply 100% scaling and profile changes." -ForegroundColor Green
+Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
 Write-Host "Log off now to apply changes (Y/N)? " -ForegroundColor Magenta -NoNewLine
 $confirmLogoff = Read-Host
