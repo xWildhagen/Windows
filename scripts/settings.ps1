@@ -13,16 +13,18 @@ Write-Host "=== settings.ps1 ===" -ForegroundColor Blue
 # ---------------------------
 # Paths (HOME_FOLDER\windows)
 # ---------------------------
-$homeFolder  = [Environment]::GetFolderPath('UserProfile')  # "HOME_FOLDER"
-$repoRoot    = Join-Path $homeFolder 'windows'
-$assetsRoot  = Join-Path $repoRoot 'assets'
+$homeFolder   = [Environment]::GetFolderPath('UserProfile')  # "HOME_FOLDER"
+$repoRoot     = Join-Path $homeFolder 'windows'
+$assetsRoot   = Join-Path $repoRoot 'assets'
 
-$wallpaperPath   = Join-Path $assetsRoot 'aurora.png'
-$profilePicPath  = Join-Path $assetsRoot 'catppuccin.png'
+$wallpaperPath  = Join-Path $assetsRoot 'aurora.png'       # Desktop wallpaper
+$lockScreenPath = Join-Path $assetsRoot 'aurora.png'       # Lock screen image (separate var)
+$profilePicPath = Join-Path $assetsRoot 'catppuccin.png'   # Account picture
 
 Write-Host "Repo root:        $repoRoot"
 Write-Host "Wallpaper image:  $wallpaperPath"
-Write-Host "Profile picture:  $profilePicPath" 
+Write-Host "Lock screen:      $lockScreenPath"
+Write-Host "Profile picture:  $profilePicPath"
 
 # ---------------------------
 # Set 100% display scaling
@@ -92,6 +94,46 @@ public class WallpaperHelper
 
     [WallpaperHelper]::SetWallpaper($Path)
     Write-Host "Wallpaper set." -ForegroundColor Blue
+}
+
+# ---------------------------
+# Lock screen (policy, all users)
+# ---------------------------
+
+function Set-LockScreenImage {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        Write-Warning "Lock screen image file not found: $Path"
+        return
+    }
+
+    # This writes to HKLM\SOFTWARE\Policies, so it must be run elevated.
+    $isAdmin = ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+    if (-not $isAdmin) {
+        Write-Warning "Skipping lock screen: settings.ps1 must be run as Administrator to change it."
+        return
+    }
+
+    $personalizationKey = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization'
+
+    if (-not (Test-Path $personalizationKey)) {
+        New-Item -Path $personalizationKey -Force | Out-Null
+    }
+
+    # Force a specific lock screen image and disable slideshow/overlays
+    New-ItemProperty -Path $personalizationKey -Name 'LockScreenImage'            -PropertyType String -Value $Path -Force | Out-Null
+    New-ItemProperty -Path $personalizationKey -Name 'NoLockScreenSlideshow'      -PropertyType DWord  -Value 1    -Force | Out-Null
+    New-ItemProperty -Path $personalizationKey -Name 'NoChangingLockScreen'       -PropertyType DWord  -Value 1    -Force | Out-Null
+    New-ItemProperty -Path $personalizationKey -Name 'LockScreenOverlaysDisabled' -PropertyType DWord  -Value 1    -Force | Out-Null
+
+    Write-Host "Lock screen image set (policy)." -ForegroundColor Blue
 }
 
 # ---------------------------
@@ -182,7 +224,7 @@ function Set-CustomAccountPicture {
 }
 
 # ---------------------------
-# Apply wallpaper + profile
+# Apply wallpaper + lock screen + profile
 # ---------------------------
 
 try {
@@ -190,6 +232,13 @@ try {
 }
 catch {
     Write-Warning "Failed to set wallpaper: $_"
+}
+
+try {
+    Set-LockScreenImage -Path $lockScreenPath
+}
+catch {
+    Write-Warning "Failed to set lock screen image: $_"
 }
 
 try {
