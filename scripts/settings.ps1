@@ -40,7 +40,6 @@ if (-not (Test-Path $desktopKey)) {
     New-Item -Path $desktopKey -Force | Out-Null
 }
 
-# Enable custom DPI scaling and set it to 100%
 # Win8DpiScaling = 1 → use custom DPI
 # LogPixels      = 96 (decimal) → 100% scaling
 New-ItemProperty -Path $desktopKey -Name 'Win8DpiScaling' -PropertyType DWord -Value 1 -Force | Out-Null
@@ -138,14 +137,10 @@ function Set-NightLightSchedule {
 }
 
 Write-Host "Configuring Night light schedule..." -ForegroundColor Blue
-try {
-    # 20:00 → 06:00, moderate warmth (4500K). Change ColorTemperature if you want it warmer/cooler.
-    Set-NightLightSchedule -StartHour 20 -StartMinutes 0 -EndHour 6 -EndMinutes 0 -Enabled $true -ColorTemperature 4500
-    Write-Host "Night light schedule set to 20:00–06:00." -ForegroundColor Blue
-}
-catch {
-    Write-Warning "Failed to configure Night light schedule: $_"
-}
+
+# 20:00 → 06:00, moderate warmth (4500K)
+Set-NightLightSchedule -StartHour 20 -StartMinutes 0 -EndHour 6 -EndMinutes 0 -Enabled $true -ColorTemperature 4500
+Write-Host "Night light schedule set to 20:00–06:00." -ForegroundColor Blue
 
 # ---------------------------
 # Power plan: display & sleep
@@ -157,30 +152,15 @@ Write-Host "Configuring display and sleep timeouts..." -ForegroundColor Blue
 # - Turn screen off after 30 minutes
 # - Sleep after 60 minutes
 powercfg /change monitor-timeout-ac 30     # minutes
-$acMonitorExitCode = $LASTEXITCODE
-
 powercfg /change standby-timeout-ac 60     # minutes
-$acSleepExitCode = $LASTEXITCODE
 
 # On battery (DC)
 # - Turn screen off after 15 minutes
 # - Sleep after 30 minutes
 powercfg /change monitor-timeout-dc 15     # minutes
-$dcMonitorExitCode = $LASTEXITCODE
-
 powercfg /change standby-timeout-dc 30     # minutes
-$dcSleepExitCode = $LASTEXITCODE
 
-if ($acMonitorExitCode -ne 0 -or
-    $acSleepExitCode   -ne 0 -or
-    $dcMonitorExitCode -ne 0 -or
-    $dcSleepExitCode   -ne 0) {
-
-    Write-Warning "One or more powercfg commands may have failed. Try running this script in an elevated PowerShell session."
-}
-else {
-    Write-Host "Display and sleep timeouts configured." -ForegroundColor Blue
-}
+Write-Host "Display and sleep timeouts configured." -ForegroundColor Blue
 
 # ---------------------------
 # Energy Saver: auto threshold
@@ -190,14 +170,8 @@ Write-Host "Configuring Energy Saver threshold..." -ForegroundColor Blue
 
 # On battery: turn Energy Saver on automatically at 20%
 powercfg /setdcvalueindex SCHEME_CURRENT SUB_ENERGYSAVER ESBATTTHRESHOLD 20
-$esThresholdExitCode = $LASTEXITCODE
 
-if ($esThresholdExitCode -ne 0) {
-    Write-Warning "Failed to configure Energy Saver threshold (code $esThresholdExitCode). Try running this script as Administrator."
-}
-else {
-    Write-Host "Energy Saver will turn on automatically at 20% battery." -ForegroundColor Blue
-}
+Write-Host "Energy Saver will turn on automatically at 20% battery." -ForegroundColor Blue
 
 # ---------------------------
 # Wallpaper (current user)
@@ -272,29 +246,18 @@ function Set-LockScreenImage {
         return
     }
 
-    # Convert/copy the source image to a machine-wide JPG so system can always read it
+    # Copy the source image to a machine-wide location so the system can always read it
     $lockDestRoot = Join-Path $env:ProgramData 'WindowsLockScreen'
     if (-not (Test-Path $lockDestRoot)) {
         New-Item -Path $lockDestRoot -ItemType Directory -Force | Out-Null
     }
 
-    $lockDestFile = Join-Path $lockDestRoot 'LockScreen.jpg'
+    # Keep original file extension
+    $ext          = [System.IO.Path]::GetExtension($Path)
+    if (-not $ext) { $ext = '.png' }
+    $lockDestFile = Join-Path $lockDestRoot ("LockScreen{0}" -f $ext)
 
-    try {
-        Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
-
-        $srcImage = [System.Drawing.Image]::FromFile($Path)
-        try {
-            $srcImage.Save($lockDestFile, [System.Drawing.Imaging.ImageFormat]::Jpeg)
-        }
-        finally {
-            $srcImage.Dispose()
-        }
-    }
-    catch {
-        # If conversion fails for some reason, fall back to just copying the file
-        Copy-Item -LiteralPath $Path -Destination $lockDestFile -Force
-    }
+    Copy-Item -LiteralPath $Path -Destination $lockDestFile -Force
 
     $targetPath = $lockDestFile
 
@@ -362,35 +325,28 @@ function Set-CustomAccountPicture {
     # Create multiple sizes from the source PNG – Windows expects several ImageXX entries.
     Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
 
-    $sizes = @(32, 40, 48, 96, 192, 240, 448)
+    $sizes       = @(32, 40, 48, 96, 192, 240, 448)
     $sourceImage = [System.Drawing.Image]::FromFile($Path)
 
-    try {
-        foreach ($size in $sizes) {
-            $destFile = Join-Path $userPicturesDir ("Image{0}.png" -f $size)
+    foreach ($size in $sizes) {
+        $destFile = Join-Path $userPicturesDir ("Image{0}.png" -f $size)
 
-            $bmp      = New-Object System.Drawing.Bitmap ($size, $size)
-            $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+        $bmp      = New-Object System.Drawing.Bitmap ($size, $size)
+        $graphics = [System.Drawing.Graphics]::FromImage($bmp)
 
-            try {
-                $graphics.InterpolationMode  = 'HighQualityBicubic'
-                $graphics.SmoothingMode      = 'HighQuality'
-                $graphics.PixelOffsetMode    = 'HighQuality'
-                $graphics.CompositingQuality = 'HighQuality'
+        $graphics.InterpolationMode  = 'HighQualityBicubic'
+        $graphics.SmoothingMode      = 'HighQuality'
+        $graphics.PixelOffsetMode    = 'HighQuality'
+        $graphics.CompositingQuality = 'HighQuality'
 
-                $graphics.DrawImage($sourceImage, 0, 0, $size, $size)
-            }
-            finally {
-                $graphics.Dispose()
-            }
+        $graphics.DrawImage($sourceImage, 0, 0, $size, $size)
 
-            $bmp.Save($destFile, [System.Drawing.Imaging.ImageFormat]::Png)
-            $bmp.Dispose()
-        }
+        $graphics.Dispose()
+        $bmp.Save($destFile, [System.Drawing.Imaging.ImageFormat]::Png)
+        $bmp.Dispose()
     }
-    finally {
-        $sourceImage.Dispose()
-    }
+
+    $sourceImage.Dispose()
 
     # Point registry to the generated images:
     # HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\<SID>\ImageXX
@@ -413,26 +369,9 @@ function Set-CustomAccountPicture {
 # Apply wallpaper + lock screen + profile
 # ---------------------------
 
-try {
-    Set-CustomWallpaper -Path $wallpaperPath
-}
-catch {
-    Write-Warning "Failed to set wallpaper: $_"
-}
-
-try {
-    Set-LockScreenImage -Path $lockScreenPath
-}
-catch {
-    Write-Warning "Failed to set lock screen image: $_"
-}
-
-try {
-    Set-CustomAccountPicture -Path $profilePicPath
-}
-catch {
-    Write-Warning "Failed to set profile picture: $_"
-}
+Set-CustomWallpaper       -Path $wallpaperPath
+Set-LockScreenImage       -Path $lockScreenPath
+Set-CustomAccountPicture  -Path $profilePicPath
 
 # ---------------------------
 # Finish and log off/reboot/do nothing
