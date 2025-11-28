@@ -91,7 +91,7 @@ public class WallpaperHelper
     }
 
     [WallpaperHelper]::SetWallpaper($Path)
-    Write-Host "Wallpaper set." -ForegroundColor Green
+    Write-Host "Wallpaper set." -ForegroundColor Blue
 }
 
 # ---------------------------
@@ -178,7 +178,7 @@ function Set-CustomAccountPicture {
         New-ItemProperty -Path $regKey -Name $valueName -PropertyType String -Value $valuePath -Force | Out-Null
     }
 
-    Write-Host "Profile picture set for SID $userSid." -ForegroundColor Green
+    Write-Host "Profile picture set for SID $userSid." -ForegroundColor Blue
 }
 
 # ---------------------------
