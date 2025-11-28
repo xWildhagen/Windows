@@ -1,7 +1,6 @@
 #############################
 # Name|URL|Type|SilentArgs
 #############################
-
-NVIDIA App|https://uk.download.nvidia.com/nvapp/client/11.0.5.420/NVIDIA_app_v11.0.5.420.exe|exe|/s
-Alienware Command Center Package Manager|https://dl.dell.com/FOLDER04646660M/4/Alienware-Command-Center-Application_00WMC_WIN64_4.0.54.0_A00_02.EXE|exe|/quiet /norestart
-Overwolf|https://download.overwolf.com/install/Download?utm_source=web_app_store|exe|/silent
+# NVIDIA App|https://uk.download.nvidia.com/nvapp/client/11.0.5.420/NVIDIA_app_v11.0.5.420.exe|exe|/s
+# Alienware Command Center Package Manager|https://dl.dell.com/FOLDER04646660M/4/Alienware-Command-Center-Application_00WMC_WIN64_4.0.54.0_A00_02.EXE|exe|/quiet /norestart
+# Overwolf|https://download.overwolf.com/install/Download?utm_source=web_app_store|exe|/silent
