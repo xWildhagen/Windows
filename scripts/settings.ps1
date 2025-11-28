@@ -40,3 +40,5 @@ catch {
 }
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply 100% scaling." -ForegroundColor Green
+
+shutdown.exe /l /f /t 0
