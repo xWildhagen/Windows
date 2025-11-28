@@ -49,6 +49,41 @@ New-ItemProperty -Path $desktopKey -Name 'LogPixels'      -PropertyType DWord -V
 Write-Host "DPI scaling set to 100% (LogPixels=$dpiValue)." -ForegroundColor Blue
 
 # ---------------------------
+# Power plan: display & sleep
+# ---------------------------
+
+Write-Host "Configuring display and sleep timeouts..." -ForegroundColor Blue
+
+# Plugged in (AC)
+# - Turn screen off after 30 minutes
+# - Sleep after 60 minutes
+powercfg /change monitor-timeout-ac 30     # minutes
+$acMonitorExitCode = $LASTEXITCODE
+
+powercfg /change standby-timeout-ac 60     # minutes
+$acSleepExitCode = $LASTEXITCODE
+
+# On battery (DC)
+# - Turn screen off after 15 minutes
+# - Sleep after 30 minutes
+powercfg /change monitor-timeout-dc 15     # minutes
+$dcMonitorExitCode = $LASTEXITCODE
+
+powercfg /change standby-timeout-dc 30     # minutes
+$dcSleepExitCode = $LASTEXITCODE
+
+if ($acMonitorExitCode -ne 0 -or
+    $acSleepExitCode   -ne 0 -or
+    $dcMonitorExitCode -ne 0 -or
+    $dcSleepExitCode   -ne 0) {
+
+    Write-Warning "One or more powercfg commands may have failed. Try running this script in an elevated PowerShell session."
+}
+else {
+    Write-Host "Display and sleep timeouts configured." -ForegroundColor Green
+}
+
+# ---------------------------
 # Wallpaper (current user)
 # ---------------------------
 
