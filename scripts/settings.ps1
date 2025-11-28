@@ -82,6 +82,23 @@ else {
 }
 
 # ---------------------------
+# Energy Saver: auto threshold
+# ---------------------------
+
+Write-Host "Configuring Energy Saver threshold..." -ForegroundColor Blue
+
+# On battery: turn Energy Saver on automatically at 20%
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_ENERGYSAVER ESBATTTHRESHOLD 20
+$esThresholdExitCode = $LASTEXITCODE
+
+if ($esThresholdExitCode -ne 0) {
+    Write-Warning "Failed to configure Energy Saver threshold (code $esThresholdExitCode). Try running this script as Administrator."
+}
+else {
+    Write-Host "Energy Saver will turn on automatically at 20% battery." -ForegroundColor Blue
+}
+
+# ---------------------------
 # Wallpaper (current user)
 # ---------------------------
 
