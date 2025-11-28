@@ -250,13 +250,23 @@ catch {
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
-Write-Host "Log off now to apply changes (Y/N)? " -ForegroundColor Magenta -NoNewLine
-$confirmLogoff = Read-Host
+Write-Host "  [L] Log off"   -ForegroundColor Blue
+Write-Host "  [R] Reboot"    -ForegroundColor Blue
+Write-Host "  [N] Do nothing" -ForegroundColor Blue
 
-if ($confirmLogoff -match '^[Yy]$') {
-    Write-Host "Logging off..." -ForegroundColor Blue
-    Start-Process -FilePath "logoff.exe" -WindowStyle Hidden
-}
-else {
-    Write-Host "Logoff skipped. You can log off later to apply scaling and profile changes fully." -ForegroundColor Blue
+Write-Host "Choose an option (L/R/N): " -ForegroundColor Magenta -NoNewLine 
+$action = Read-Host
+
+switch -Regex ($action) {
+    '^[Ll]$' {
+        Write-Host "Logging off..." -ForegroundColor Blue
+        Start-Process -FilePath "logoff.exe" -WindowStyle Hidden
+    }
+    '^[Rr]$' {
+        Write-Host "Rebooting..." -ForegroundColor Blue
+        Start-Process -FilePath "shutdown.exe" -ArgumentList "/r /t 0" -WindowStyle Hidden
+    }
+    default {
+        Write-Host "No action selected. You can log off or reboot later to apply all changes fully." -ForegroundColor Blue
+    }
 }
