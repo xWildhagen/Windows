@@ -17,8 +17,8 @@ $homeFolder   = [Environment]::GetFolderPath('UserProfile')  # "HOME_FOLDER"
 $repoRoot     = Join-Path $homeFolder 'windows'
 $assetsRoot   = Join-Path $repoRoot 'assets'
 
-$wallpaperPath  = Join-Path $assetsRoot 'aurora.png'       # Desktop wallpaper
-$lockScreenPath = Join-Path $assetsRoot 'aurora.png'       # Lock screen image (separate var)
+$wallpaperPath  = Join-Path $assetsRoot 'aurora.png'       # Desktop wallpaper (source)
+$lockScreenPath = Join-Path $assetsRoot 'aurora.png'       # Lock screen image (source, separate var)
 $profilePicPath = Join-Path $assetsRoot 'catppuccin.png'   # Account picture
 
 Write-Host "Repo root:        $repoRoot"
@@ -97,7 +97,7 @@ public class WallpaperHelper
 }
 
 # ---------------------------
-# Lock screen (policy, all users)
+# Lock screen (policy + CSP, all users)
 # ---------------------------
 
 function Set-LockScreenImage {
@@ -111,7 +111,7 @@ function Set-LockScreenImage {
         return
     }
 
-    # This writes to HKLM\SOFTWARE\Policies, so it must be run elevated.
+    # This writes to HKLM, so it must be run elevated.
     $isAdmin = ([Security.Principal.WindowsPrincipal] `
         [Security.Principal.WindowsIdentity]::GetCurrent()
     ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -121,19 +121,55 @@ function Set-LockScreenImage {
         return
     }
 
-    $personalizationKey = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization'
+    # Convert/copy the source image to a machine-wide JPG so system can always read it
+    $lockDestRoot = Join-Path $env:ProgramData 'WindowsLockScreen'
+    if (-not (Test-Path $lockDestRoot)) {
+        New-Item -Path $lockDestRoot -ItemType Directory -Force | Out-Null
+    }
 
+    $lockDestFile = Join-Path $lockDestRoot 'LockScreen.jpg'
+
+    try {
+        Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
+
+        $srcImage = [System.Drawing.Image]::FromFile($Path)
+        try {
+            $srcImage.Save($lockDestFile, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+        }
+        finally {
+            $srcImage.Dispose()
+        }
+    }
+    catch {
+        # If conversion fails for some reason, fall back to just copying the file
+        Copy-Item -LiteralPath $Path -Destination $lockDestFile -Force
+    }
+
+    $targetPath = $lockDestFile
+
+    # 1) Group Policy-style key
+    $personalizationKey = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization'
     if (-not (Test-Path $personalizationKey)) {
         New-Item -Path $personalizationKey -Force | Out-Null
     }
 
-    # Force a specific lock screen image and disable slideshow/overlays
-    New-ItemProperty -Path $personalizationKey -Name 'LockScreenImage'            -PropertyType String -Value $Path -Force | Out-Null
-    New-ItemProperty -Path $personalizationKey -Name 'NoLockScreenSlideshow'      -PropertyType DWord  -Value 1    -Force | Out-Null
-    New-ItemProperty -Path $personalizationKey -Name 'NoChangingLockScreen'       -PropertyType DWord  -Value 1    -Force | Out-Null
-    New-ItemProperty -Path $personalizationKey -Name 'LockScreenOverlaysDisabled' -PropertyType DWord  -Value 1    -Force | Out-Null
+    New-ItemProperty -Path $personalizationKey -Name 'LockScreenImage'            -PropertyType String -Value $targetPath -Force | Out-Null
+    New-ItemProperty -Path $personalizationKey -Name 'NoLockScreenSlideshow'      -PropertyType DWord  -Value 1          -Force | Out-Null
+    New-ItemProperty -Path $personalizationKey -Name 'NoChangingLockScreen'       -PropertyType DWord  -Value 1          -Force | Out-Null
+    New-ItemProperty -Path $personalizationKey -Name 'LockScreenOverlaysDisabled' -PropertyType DWord  -Value 1          -Force | Out-Null
 
-    Write-Host "Lock screen image set (policy)." -ForegroundColor Blue
+    # 2) PersonalizationCSP keys (used by newer builds / MDM)
+    $cspKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP'
+    if (-not (Test-Path $cspKey)) {
+        New-Item -Path $cspKey -Force | Out-Null
+    }
+
+    New-ItemProperty -Path $cspKey -Name 'LockScreenImageStatus' -PropertyType DWord  -Value 1          -Force | Out-Null
+    New-ItemProperty -Path $cspKey -Name 'LockScreenImagePath'   -PropertyType String -Value $targetPath -Force | Out-Null
+    New-ItemProperty -Path $cspKey -Name 'LockScreenImageUrl'    -PropertyType String -Value $targetPath -Force | Out-Null
+
+    Write-Host "Lock screen image set to $targetPath." -ForegroundColor Blue
+    Write-Host "You may need to sign out or reboot to see it on the lock screen." -ForegroundColor Yellow
 }
 
 # ---------------------------
@@ -174,7 +210,7 @@ function Set-CustomAccountPicture {
     New-Item -Path $userPicturesDir -ItemType Directory -Force | Out-Null
 
     # Create multiple sizes from the source PNG – Windows expects several ImageXX entries.
-    Add-Type -AssemblyName System.Drawing
+    Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
 
     $sizes = @(32, 40, 48, 96, 192, 240, 448)
     $sourceImage = [System.Drawing.Image]::FromFile($Path)
@@ -250,11 +286,11 @@ catch {
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
-Write-Host "  [L] Log off"   -ForegroundColor Blue
-Write-Host "  [R] Reboot"    -ForegroundColor Blue
+Write-Host "  [L] Log off"    -ForegroundColor Blue
+Write-Host "  [R] Reboot"     -ForegroundColor Blue
 Write-Host "  [N] Do nothing" -ForegroundColor Blue
 
-Write-Host "Choose an option (L/R/N): " -ForegroundColor Magenta -NoNewLine 
+Write-Host "Choose an option (L/R/N): " -ForegroundColor Magenta -NoNewLine
 $action = Read-Host
 
 switch -Regex ($action) {
