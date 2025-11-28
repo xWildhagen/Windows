@@ -52,8 +52,6 @@ Write-Host "DPI scaling set to 100% (LogPixels=$dpiValue)." -ForegroundColor Blu
 # Power plan: display & sleep
 # ---------------------------
 
-Write-Host "Configuring display and sleep timeouts..." -ForegroundColor Blue
-
 # Plugged in (AC)
 # - Turn screen off after 30 minutes
 # - Sleep after 60 minutes
@@ -80,7 +78,7 @@ if ($acMonitorExitCode -ne 0 -or
     Write-Warning "One or more powercfg commands may have failed. Try running this script in an elevated PowerShell session."
 }
 else {
-    Write-Host "Display and sleep timeouts configured." -ForegroundColor Green
+    Write-Host "Display and sleep timeouts configured." -ForegroundColor Blue
 }
 
 # ---------------------------
