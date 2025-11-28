@@ -41,7 +41,7 @@ catch {
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply 100% scaling." -ForegroundColor Green
 
-Write-Host "Log off now to apply changes? (Y/N)" -ForegroundColor Magenta -NoNewLine
+Write-Host "Log off now to apply changes (Y/N)? " -ForegroundColor Magenta -NoNewLine
 $confirmLogoff = Read-Host
 
 if ($confirmLogoff -match '^[Yy]$') {
