@@ -169,7 +169,6 @@ function Set-LockScreenImage {
     New-ItemProperty -Path $cspKey -Name 'LockScreenImageUrl'    -PropertyType String -Value $targetPath -Force | Out-Null
 
     Write-Host "Lock screen image set to $targetPath." -ForegroundColor Blue
-    Write-Host "You may need to sign out or reboot to see it on the lock screen." -ForegroundColor Yellow
 }
 
 # ---------------------------
