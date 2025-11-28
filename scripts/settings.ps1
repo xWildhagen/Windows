@@ -179,7 +179,7 @@ Write-Host "Energy Saver will turn on automatically at 20% battery." -Foreground
 
 function Set-CustomWallpaper {
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory = $true)]
         [string]$Path
     )
 
@@ -191,33 +191,8 @@ function Set-CustomWallpaper {
     # Update registry so Windows knows about the image
     Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name 'Wallpaper' -Value $Path
 
-    # Use user32.dll SystemParametersInfo to apply it immediately
-    $src = @'
-using System;
-using System.Runtime.InteropServices;
-
-public class WallpaperHelper
-{
-    public const int SetDesktopWallpaper = 20;
-    public const int UpdateIniFile       = 0x01;
-    public const int SendWinIniChange    = 0x02;
-
-    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-    public static extern int SystemParametersInfo(
-        int uAction, int uParam, string lpvParam, int fuWinIni);
-
-    public static void SetWallpaper(string path)
-    {
-        SystemParametersInfo(SetDesktopWallpaper, 0, path, UpdateIniFile | SendWinIniChange);
-    }
-}
-'@
-
-    if (-not ("WallpaperHelper" -as [Type])) {
-        Add-Type -TypeDefinition $src -ErrorAction Stop
-    }
-
-    [WallpaperHelper]::SetWallpaper($Path)
+    # Tell Windows to re-read wallpaper settings (best-effort)
+    Start-Process -FilePath "RUNDLL32.EXE" -ArgumentList "user32.dll,UpdatePerUserSystemParameters" -WindowStyle Hidden
     Write-Host "Wallpaper set." -ForegroundColor Blue
 }
 
@@ -227,7 +202,7 @@ public class WallpaperHelper
 
 function Set-LockScreenImage {
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory = $true)]
         [string]$Path
     )
 
@@ -291,7 +266,7 @@ function Set-LockScreenImage {
 
 function Set-CustomAccountPicture {
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory = $true)]
         [string]$Path
     )
 
