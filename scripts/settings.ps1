@@ -40,107 +40,13 @@ if (-not (Test-Path $desktopKey)) {
     New-Item -Path $desktopKey -Force | Out-Null
 }
 
+# Enable custom DPI scaling and set it to 100%
 # Win8DpiScaling = 1 → use custom DPI
 # LogPixels      = 96 (decimal) → 100% scaling
 New-ItemProperty -Path $desktopKey -Name 'Win8DpiScaling' -PropertyType DWord -Value 1 -Force | Out-Null
 New-ItemProperty -Path $desktopKey -Name 'LogPixels'      -PropertyType DWord -Value $dpiValue -Force | Out-Null
 
 Write-Host "DPI scaling set to 100% (LogPixels=$dpiValue)." -ForegroundColor Blue
-
-# ---------------------------
-# Night light: 20:00–06:00
-# ---------------------------
-
-function Set-NightLightSchedule {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [ValidateRange(0,23)]
-        [int]$StartHour,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateSet(0,15,30,45)]
-        [int]$StartMinutes,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateRange(0,23)]
-        [int]$EndHour,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateSet(0,15,30,45)]
-        [int]$EndMinutes,
-
-        [Parameter(Mandatory = $true)]
-        [bool]$Enabled,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateRange(1200,6500)]
-        [int]$ColorTemperature   # Kelvin
-    )
-
-    # Build the binary blob Night light uses in CloudStore
-    $bytes = New-Object System.Collections.Generic.List[byte]
-
-    # Header
-    $bytes.AddRange(@(0x43,0x42,0x01,0x00,0x0A,0x02,0x01,0x00,0x2A,0x06))
-
-    # "Last modified" timestamp encoded as variable-length int
-    $epoch = [System.DateTimeOffset]::Now.ToUnixTimeSeconds()
-    $bytes.Add([byte](($epoch -band 0x7F) -bor 0x80))
-    $bytes.Add([byte]((($epoch -shr 7)  -band 0x7F) -bor 0x80))
-    $bytes.Add([byte]((($epoch -shr 14) -band 0x7F) -bor 0x80))
-    $bytes.Add([byte]((($epoch -shr 21) -band 0x7F) -bor 0x80))
-    $bytes.Add([byte]($epoch -shr 28))
-
-    # Marker bytes
-    $bytes.AddRange(@(0x2A,0x2B,0x0E,0x1D,0x43,0x42,0x01,0x00))
-
-    if ($Enabled) {
-        # "Schedule on" flag
-        $bytes.AddRange(@(0x02,0x01))
-    }
-
-    # Start time
-    $bytes.AddRange(@(0xCA,0x14,0x0E))
-    $bytes.Add([byte]$StartHour)
-    $bytes.Add(0x2E)
-    $bytes.Add([byte]$StartMinutes)
-
-    # End time
-    $bytes.AddRange(@(0x00,0xCA,0x1E,0x0E))
-    $bytes.Add([byte]$EndHour)
-    $bytes.Add(0x2E)
-    $bytes.Add([byte]$EndMinutes)
-
-    # Color temperature encoding
-    $bytes.AddRange(@(0x00,0xCF,0x28))
-    $low  = (($ColorTemperature -band 0x3F) * 2) + 0x80
-    $high = ($ColorTemperature -shr 6)
-    $bytes.Add([byte]$low)
-    $bytes.Add([byte]$high)
-
-    # Trailer
-    $bytes.AddRange(@(0xCA,0x32,0x00,0xCA,0x3C,0x00,0x00,0x00,0x00,0x00))
-
-    $baseKey = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current'
-    if (-not (Test-Path $baseKey)) {
-        Write-Warning "Night light CloudStore base key not found; skipping Night light schedule."
-        return
-    }
-
-    $settingsKey = Join-Path $baseKey 'default$windows.data.bluelightreduction.settings\windows.data.bluelightreduction.settings'
-    if (-not (Test-Path $settingsKey)) {
-        New-Item -Path $settingsKey -Force | Out-Null
-    }
-
-    Set-ItemProperty -Path $settingsKey -Name 'Data' -Value $bytes.ToArray() -Type Binary
-}
-
-Write-Host "Configuring Night light schedule..." -ForegroundColor Blue
-
-# 20:00 → 06:00, moderate warmth (4500K)
-Set-NightLightSchedule -StartHour 20 -StartMinutes 0 -EndHour 6 -EndMinutes 0 -Enabled $true -ColorTemperature 4500
-Write-Host "Night light schedule set to 20:00–06:00." -ForegroundColor Blue
 
 # ---------------------------
 # Power plan: display & sleep
@@ -179,7 +85,7 @@ Write-Host "Energy Saver will turn on automatically at 20% battery." -Foreground
 
 function Set-CustomWallpaper {
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [string]$Path
     )
 
@@ -191,8 +97,33 @@ function Set-CustomWallpaper {
     # Update registry so Windows knows about the image
     Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name 'Wallpaper' -Value $Path
 
-    # Tell Windows to re-read wallpaper settings (best-effort)
-    Start-Process -FilePath "RUNDLL32.EXE" -ArgumentList "user32.dll,UpdatePerUserSystemParameters" -WindowStyle Hidden
+    # Use user32.dll SystemParametersInfo to apply it immediately
+    $src = @'
+using System;
+using System.Runtime.InteropServices;
+
+public class WallpaperHelper
+{
+    public const int SetDesktopWallpaper = 20;
+    public const int UpdateIniFile       = 0x01;
+    public const int SendWinIniChange    = 0x02;
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    public static extern int SystemParametersInfo(
+        int uAction, int uParam, string lpvParam, int fuWinIni);
+
+    public static void SetWallpaper(string path)
+    {
+        SystemParametersInfo(SetDesktopWallpaper, 0, path, UpdateIniFile | SendWinIniChange);
+    }
+}
+'@
+
+    if (-not ("WallpaperHelper" -as [Type])) {
+        Add-Type -TypeDefinition $src -ErrorAction Stop
+    }
+
+    [WallpaperHelper]::SetWallpaper($Path)
     Write-Host "Wallpaper set." -ForegroundColor Blue
 }
 
@@ -202,7 +133,7 @@ function Set-CustomWallpaper {
 
 function Set-LockScreenImage {
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [string]$Path
     )
 
@@ -212,27 +143,38 @@ function Set-LockScreenImage {
     }
 
     # This writes to HKLM, so it must be run elevated.
-    $currentIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal       = New-Object System.Security.Principal.WindowsPrincipal($currentIdentity)
-    $isAdmin         = $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+    $isAdmin = ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
     if (-not $isAdmin) {
         Write-Warning "Skipping lock screen: settings.ps1 must be run as Administrator to change it."
         return
     }
 
-    # Copy the source image to a machine-wide location so the system can always read it
+    # Convert/copy the source image to a machine-wide JPG so system can always read it
     $lockDestRoot = Join-Path $env:ProgramData 'WindowsLockScreen'
     if (-not (Test-Path $lockDestRoot)) {
         New-Item -Path $lockDestRoot -ItemType Directory -Force | Out-Null
     }
 
-    # Keep original file extension
-    $ext          = [System.IO.Path]::GetExtension($Path)
-    if (-not $ext) { $ext = '.png' }
-    $lockDestFile = Join-Path $lockDestRoot ("LockScreen{0}" -f $ext)
+    $lockDestFile = Join-Path $lockDestRoot 'LockScreen.jpg'
 
-    Copy-Item -LiteralPath $Path -Destination $lockDestFile -Force
+    try {
+        Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
+
+        $srcImage = [System.Drawing.Image]::FromFile($Path)
+        try {
+            $srcImage.Save($lockDestFile, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+        }
+        finally {
+            $srcImage.Dispose()
+        }
+    }
+    catch {
+        # If conversion fails for some reason, fall back to just copying the file
+        Copy-Item -LiteralPath $Path -Destination $lockDestFile -Force
+    }
 
     $targetPath = $lockDestFile
 
@@ -266,7 +208,7 @@ function Set-LockScreenImage {
 
 function Set-CustomAccountPicture {
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [string]$Path
     )
 
@@ -276,9 +218,9 @@ function Set-CustomAccountPicture {
     }
 
     # This part writes to HKLM, so it needs an elevated session.
-    $currentIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal       = New-Object System.Security.Principal.WindowsPrincipal($currentIdentity)
-    $isAdmin         = $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+    $isAdmin = ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
     if (-not $isAdmin) {
         Write-Warning "Skipping profile picture: settings.ps1 must be run as Administrator to change it."
@@ -286,7 +228,7 @@ function Set-CustomAccountPicture {
     }
 
     # Current user SID
-    $userSid = $currentIdentity.User.Value
+    $userSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 
     # Folder used by Windows for account pictures: %PUBLIC%\AccountPictures\<SID>
     $accountPicturesRoot = Join-Path $env:PUBLIC 'AccountPictures'
@@ -300,28 +242,35 @@ function Set-CustomAccountPicture {
     # Create multiple sizes from the source PNG – Windows expects several ImageXX entries.
     Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
 
-    $sizes       = @(32, 40, 48, 96, 192, 240, 448)
+    $sizes = @(32, 40, 48, 96, 192, 240, 448)
     $sourceImage = [System.Drawing.Image]::FromFile($Path)
 
-    foreach ($size in $sizes) {
-        $destFile = Join-Path $userPicturesDir ("Image{0}.png" -f $size)
+    try {
+        foreach ($size in $sizes) {
+            $destFile = Join-Path $userPicturesDir ("Image{0}.png" -f $size)
 
-        $bmp      = New-Object System.Drawing.Bitmap ($size, $size)
-        $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+            $bmp      = New-Object System.Drawing.Bitmap ($size, $size)
+            $graphics = [System.Drawing.Graphics]::FromImage($bmp)
 
-        $graphics.InterpolationMode  = 'HighQualityBicubic'
-        $graphics.SmoothingMode      = 'HighQuality'
-        $graphics.PixelOffsetMode    = 'HighQuality'
-        $graphics.CompositingQuality = 'HighQuality'
+            try {
+                $graphics.InterpolationMode  = 'HighQualityBicubic'
+                $graphics.SmoothingMode      = 'HighQuality'
+                $graphics.PixelOffsetMode    = 'HighQuality'
+                $graphics.CompositingQuality = 'HighQuality'
 
-        $graphics.DrawImage($sourceImage, 0, 0, $size, $size)
+                $graphics.DrawImage($sourceImage, 0, 0, $size, $size)
+            }
+            finally {
+                $graphics.Dispose()
+            }
 
-        $graphics.Dispose()
-        $bmp.Save($destFile, [System.Drawing.Imaging.ImageFormat]::Png)
-        $bmp.Dispose()
+            $bmp.Save($destFile, [System.Drawing.Imaging.ImageFormat]::Png)
+            $bmp.Dispose()
+        }
     }
-
-    $sourceImage.Dispose()
+    finally {
+        $sourceImage.Dispose()
+    }
 
     # Point registry to the generated images:
     # HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\<SID>\ImageXX
@@ -344,13 +293,26 @@ function Set-CustomAccountPicture {
 # Apply wallpaper + lock screen + profile
 # ---------------------------
 
-Set-CustomWallpaper      -Path $wallpaperPath
-Set-LockScreenImage      -Path $lockScreenPath
-Set-CustomAccountPicture -Path $profilePicPath
+try {
+    Set-CustomWallpaper -Path $wallpaperPath
+}
+catch {
+    Write-Warning "Failed to set wallpaper: $_"
+}
 
-# ---------------------------
-# Finish and log off/reboot/do nothing
-# ---------------------------
+try {
+    Set-LockScreenImage -Path $lockScreenPath
+}
+catch {
+    Write-Warning "Failed to set lock screen image: $_"
+}
+
+try {
+    Set-CustomAccountPicture -Path $profilePicPath
+}
+catch {
+    Write-Warning "Failed to set profile picture: $_"
+}
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
