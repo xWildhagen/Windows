@@ -138,7 +138,6 @@ function Set-NightLightSchedule {
 }
 
 Write-Host "Configuring Night light schedule..." -ForegroundColor Blue
-
 try {
     # 20:00 → 06:00, moderate warmth (4500K). Change ColorTemperature if you want it warmer/cooler.
     Set-NightLightSchedule -StartHour 20 -StartMinutes 0 -EndHour 6 -EndMinutes 0 -Enabled $true -ColorTemperature 4500
@@ -151,6 +150,8 @@ catch {
 # ---------------------------
 # Power plan: display & sleep
 # ---------------------------
+
+Write-Host "Configuring display and sleep timeouts..." -ForegroundColor Blue
 
 # Plugged in (AC)
 # - Turn screen off after 30 minutes
