@@ -41,4 +41,12 @@ catch {
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply 100% scaling." -ForegroundColor Green
 
-shutdown.exe /l /f /t 0
+$confirmLogoff = Read-Host "Log off now to apply changes? (Y/N)"
+
+if ($confirmLogoff -match '^[Yy]$') {
+    Write-Host "Logging off..." -ForegroundColor Blue
+    Start-Process -FilePath "logoff.exe" -WindowStyle Hidden
+}
+else {
+    Write-Host "Logoff skipped. You can log off later to apply scaling fully." -ForegroundColor Blue
+}
