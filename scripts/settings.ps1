@@ -49,6 +49,106 @@ New-ItemProperty -Path $desktopKey -Name 'LogPixels'      -PropertyType DWord -V
 Write-Host "DPI scaling set to 100% (LogPixels=$dpiValue)." -ForegroundColor Blue
 
 # ---------------------------
+# Night light: 20:00–06:00
+# ---------------------------
+
+function Set-NightLightSchedule {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(0,23)]
+        [int]$StartHour,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet(0,15,30,45)]
+        [int]$StartMinutes,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(0,23)]
+        [int]$EndHour,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet(0,15,30,45)]
+        [int]$EndMinutes,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$Enabled,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1200,6500)]
+        [int]$ColorTemperature   # Kelvin
+    )
+
+    # Build the binary blob Night light uses in CloudStore
+    $bytes = New-Object System.Collections.Generic.List[byte]
+
+    # Header
+    $bytes.AddRange(@(0x43,0x42,0x01,0x00,0x0A,0x02,0x01,0x00,0x2A,0x06))
+
+    # "Last modified" timestamp encoded as variable-length int
+    $epoch = [System.DateTimeOffset]::Now.ToUnixTimeSeconds()
+    $bytes.Add([byte](($epoch -band 0x7F) -bor 0x80))
+    $bytes.Add([byte]((($epoch -shr 7)  -band 0x7F) -bor 0x80))
+    $bytes.Add([byte]((($epoch -shr 14) -band 0x7F) -bor 0x80))
+    $bytes.Add([byte]((($epoch -shr 21) -band 0x7F) -bor 0x80))
+    $bytes.Add([byte]($epoch -shr 28))
+
+    # Marker bytes
+    $bytes.AddRange(@(0x2A,0x2B,0x0E,0x1D,0x43,0x42,0x01,0x00))
+
+    if ($Enabled) {
+        # "Schedule on" flag
+        $bytes.AddRange(@(0x02,0x01))
+    }
+
+    # Start time
+    $bytes.AddRange(@(0xCA,0x14,0x0E))
+    $bytes.Add([byte]$StartHour)
+    $bytes.Add(0x2E)
+    $bytes.Add([byte]$StartMinutes)
+
+    # End time
+    $bytes.AddRange(@(0x00,0xCA,0x1E,0x0E))
+    $bytes.Add([byte]$EndHour)
+    $bytes.Add(0x2E)
+    $bytes.Add([byte]$EndMinutes)
+
+    # Color temperature encoding
+    $bytes.AddRange(@(0x00,0xCF,0x28))
+    $low  = (($ColorTemperature -band 0x3F) * 2) + 0x80
+    $high = ($ColorTemperature -shr 6)
+    $bytes.Add([byte]$low)
+    $bytes.Add([byte]$high)
+
+    # Trailer
+    $bytes.AddRange(@(0xCA,0x32,0x00,0xCA,0x3C,0x00,0x00,0x00,0x00,0x00))
+
+    $baseKey = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current'
+    if (-not (Test-Path $baseKey)) {
+        Write-Warning "Night light CloudStore base key not found; skipping Night light schedule."
+        return
+    }
+
+    $settingsKey = Join-Path $baseKey 'default$windows.data.bluelightreduction.settings\windows.data.bluelightreduction.settings'
+    if (-not (Test-Path $settingsKey)) {
+        New-Item -Path $settingsKey -Force | Out-Null
+    }
+
+    Set-ItemProperty -Path $settingsKey -Name 'Data' -Value $bytes.ToArray() -Type Binary
+}
+
+Write-Host "Configuring Night light schedule..." -ForegroundColor Blue
+
+try {
+    # 20:00 → 06:00, moderate warmth (4500K). Change ColorTemperature if you want it warmer/cooler.
+    Set-NightLightSchedule -StartHour 20 -StartMinutes 0 -EndHour 6 -EndMinutes 0 -Enabled $true -ColorTemperature 4500
+    Write-Host "Night light schedule set to 20:00–06:00." -ForegroundColor Blue
+}
+catch {
+    Write-Warning "Failed to configure Night light schedule: $_"
+}
+
+# ---------------------------
 # Power plan: display & sleep
 # ---------------------------
 
@@ -332,6 +432,10 @@ try {
 catch {
     Write-Warning "Failed to set profile picture: $_"
 }
+
+# ---------------------------
+# Finish and log off/reboot/do nothing
+# ---------------------------
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
