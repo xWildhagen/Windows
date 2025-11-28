@@ -212,9 +212,9 @@ function Set-LockScreenImage {
     }
 
     # This writes to HKLM, so it must be run elevated.
-    $isAdmin = ([Security.Principal.WindowsPrincipal] `
-        [Security.Principal.WindowsIdentity]::GetCurrent()
-    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    $currentIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal       = New-Object System.Security.Principal.WindowsPrincipal($currentIdentity)
+    $isAdmin         = $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
 
     if (-not $isAdmin) {
         Write-Warning "Skipping lock screen: settings.ps1 must be run as Administrator to change it."
@@ -276,9 +276,9 @@ function Set-CustomAccountPicture {
     }
 
     # This part writes to HKLM, so it needs an elevated session.
-    $isAdmin = ([Security.Principal.WindowsPrincipal] `
-        [Security.Principal.WindowsIdentity]::GetCurrent()
-    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    $currentIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal       = New-Object System.Security.Principal.WindowsPrincipal($currentIdentity)
+    $isAdmin         = $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
 
     if (-not $isAdmin) {
         Write-Warning "Skipping profile picture: settings.ps1 must be run as Administrator to change it."
@@ -286,7 +286,7 @@ function Set-CustomAccountPicture {
     }
 
     # Current user SID
-    $userSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $userSid = $currentIdentity.User.Value
 
     # Folder used by Windows for account pictures: %PUBLIC%\AccountPictures\<SID>
     $accountPicturesRoot = Join-Path $env:PUBLIC 'AccountPictures'
@@ -344,9 +344,9 @@ function Set-CustomAccountPicture {
 # Apply wallpaper + lock screen + profile
 # ---------------------------
 
-Set-CustomWallpaper       -Path $wallpaperPath
-Set-LockScreenImage       -Path $lockScreenPath
-Set-CustomAccountPicture  -Path $profilePicPath
+Set-CustomWallpaper      -Path $wallpaperPath
+Set-LockScreenImage      -Path $lockScreenPath
+Set-CustomAccountPicture -Path $profilePicPath
 
 # ---------------------------
 # Finish and log off/reboot/do nothing
