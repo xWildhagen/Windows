@@ -52,21 +52,34 @@ Write-Host "DPI scaling set to 100% (LogPixels=$dpiValue)." -ForegroundColor Blu
 # Power plan: display & sleep
 # ---------------------------
 
-Write-Host "Configuring display and sleep timeouts..." -ForegroundColor Blue
-
 # Plugged in (AC)
 # - Turn screen off after 30 minutes
 # - Sleep after 60 minutes
 powercfg /change monitor-timeout-ac 30     # minutes
+$acMonitorExitCode = $LASTEXITCODE
+
 powercfg /change standby-timeout-ac 60     # minutes
+$acSleepExitCode = $LASTEXITCODE
 
 # On battery (DC)
 # - Turn screen off after 15 minutes
 # - Sleep after 30 minutes
 powercfg /change monitor-timeout-dc 15     # minutes
-powercfg /change standby-timeout-dc 30     # minutes
+$dcMonitorExitCode = $LASTEXITCODE
 
-Write-Host "Display and sleep timeouts configured." -ForegroundColor Blue
+powercfg /change standby-timeout-dc 30     # minutes
+$dcSleepExitCode = $LASTEXITCODE
+
+if ($acMonitorExitCode -ne 0 -or
+    $acSleepExitCode   -ne 0 -or
+    $dcMonitorExitCode -ne 0 -or
+    $dcSleepExitCode   -ne 0) {
+
+    Write-Warning "One or more powercfg commands may have failed. Try running this script in an elevated PowerShell session."
+}
+else {
+    Write-Host "Display and sleep timeouts configured." -ForegroundColor Blue
+}
 
 # ---------------------------
 # Energy Saver: auto threshold
@@ -76,8 +89,14 @@ Write-Host "Configuring Energy Saver threshold..." -ForegroundColor Blue
 
 # On battery: turn Energy Saver on automatically at 20%
 powercfg /setdcvalueindex SCHEME_CURRENT SUB_ENERGYSAVER ESBATTTHRESHOLD 20
+$esThresholdExitCode = $LASTEXITCODE
 
-Write-Host "Energy Saver will turn on automatically at 20% battery." -ForegroundColor Blue
+if ($esThresholdExitCode -ne 0) {
+    Write-Warning "Failed to configure Energy Saver threshold (code $esThresholdExitCode). Try running this script as Administrator."
+}
+else {
+    Write-Host "Energy Saver will turn on automatically at 20% battery." -ForegroundColor Blue
+}
 
 # ---------------------------
 # Wallpaper (current user)
