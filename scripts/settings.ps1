@@ -442,6 +442,52 @@ New-ItemProperty -Path $explorerAdvancedKey `
 Write-Host "Start menu layout set to 'More pins' and all requested Start toggles disabled." -ForegroundColor Blue
 
 # ---------------------------
+# Start menu "Folders" (next to power button)
+# ---------------------------
+
+$startPolicyKey = 'HKLM:\Software\Microsoft\PolicyManager\current\device\Start'
+
+# Needs elevation because we're writing to HKLM
+$isAdmin = ([Security.Principal.WindowsPrincipal] `
+    [Security.Principal.WindowsIdentity]::GetCurrent()
+).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Warning "Skipping Start menu folders: run settings.ps1 as Administrator to configure them."
+}
+else {
+    if (-not (Test-Path $startPolicyKey)) {
+        New-Item -Path $startPolicyKey -Force | Out-Null
+    }
+
+    # These correspond to the toggles under Personalization > Start > Folders
+    $foldersToEnable = @(
+        'AllowPinnedFolderSettings',       # Settings
+        'AllowPinnedFolderFileExplorer',   # File Explorer
+        'AllowPinnedFolderDocuments',      # Documents
+        'AllowPinnedFolderDownloads',      # Downloads
+        'AllowPinnedFolderPersonalFolder'  # Personal folder (user profile)
+    )
+
+    foreach ($name in $foldersToEnable) {
+        # 1 = enabled; also set the ProviderSet flag so the policy is honored
+        New-ItemProperty -Path $startPolicyKey `
+                         -Name $name `
+                         -PropertyType DWord `
+                         -Value 1 `
+                         -Force | Out-Null
+
+        New-ItemProperty -Path $startPolicyKey `
+                         -Name ($name + '_ProviderSet') `
+                         -PropertyType DWord `
+                         -Value 1 `
+                         -Force | Out-Null
+    }
+
+    Write-Host "Start menu 'Folders' enabled: Settings, File Explorer, Documents, Downloads, Personal folder." -ForegroundColor Blue
+}
+
+# ---------------------------
 # Account picture (profile)
 # ---------------------------
 
