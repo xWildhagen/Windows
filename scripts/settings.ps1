@@ -612,6 +612,7 @@ Write-Host ""
 
 Write-Host "Choose an option [L/R/N]: " -ForegroundColor Magenta -NoNewLine
 $action = Read-Host
+Write-Host ""
 
 switch -Regex ($action) {
     '^[Ll]$' {
