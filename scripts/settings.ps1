@@ -98,26 +98,6 @@ else {
 }
 
 # ---------------------------
-# Taskbar "End task" option
-# ---------------------------
-
-$taskbarDevKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings'
-
-# Ensure the key exists
-if (-not (Test-Path $taskbarDevKey)) {
-    New-Item -Path $taskbarDevKey -Force | Out-Null
-}
-
-# Enable the "End task" button on taskbar right-click
-New-ItemProperty -Path $taskbarDevKey `
-                 -Name 'TaskbarEndTask' `
-                 -PropertyType DWord `
-                 -Value 1 `
-                 -Force | Out-Null
-
-Write-Host 'End task on taskbar enabled.' -ForegroundColor Blue
-
-# ---------------------------
 # Clipboard: history + sync
 # ---------------------------
 
@@ -288,31 +268,6 @@ catch {
 }
 
 # ---------------------------
-# Desktop icon settings – hide Recycle Bin
-# ---------------------------
-
-$rbClsid = '{645FF040-5081-101B-9F08-00AA002F954E}'
-
-$hideIconsBase = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons'
-$newStartKey   = Join-Path $hideIconsBase 'NewStartPanel'
-$classStartKey = Join-Path $hideIconsBase 'ClassicStartMenu'
-
-foreach ($key in @($newStartKey, $classStartKey)) {
-    if (-not (Test-Path $key)) {
-        New-Item -Path $key -Force | Out-Null
-    }
-
-    # 1 = hidden, 0 = visible
-    New-ItemProperty -Path $key `
-                     -Name $rbClsid `
-                     -PropertyType DWord `
-                     -Value 1 `
-                     -Force | Out-Null
-}
-
-Write-Host "Recycle Bin desktop icon disabled." -ForegroundColor Blue
-
-# ---------------------------
 # Lock screen (policy + CSP, all users)
 # ---------------------------
 
@@ -457,52 +412,6 @@ New-ItemProperty -Path $explorerAdvancedKey `
 Write-Host "Start menu layout set to 'More pins' and all requested Start toggles disabled." -ForegroundColor Blue
 
 # ---------------------------
-# Start menu "Folders" (next to power button)
-# ---------------------------
-
-$startPolicyKey = 'HKLM:\Software\Microsoft\PolicyManager\current\device\Start'
-
-# Needs elevation because we're writing to HKLM
-$isAdmin = ([Security.Principal.WindowsPrincipal] `
-    [Security.Principal.WindowsIdentity]::GetCurrent()
-).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-if (-not $isAdmin) {
-    Write-Warning "Skipping Start menu folders: run settings.ps1 as Administrator to configure them."
-}
-else {
-    if (-not (Test-Path $startPolicyKey)) {
-        New-Item -Path $startPolicyKey -Force | Out-Null
-    }
-
-    # These correspond to the toggles under Personalization > Start > Folders
-    $foldersToEnable = @(
-        'AllowPinnedFolderSettings',       # Settings
-        'AllowPinnedFolderFileExplorer',   # File Explorer
-        'AllowPinnedFolderDocuments',      # Documents
-        'AllowPinnedFolderDownloads',      # Downloads
-        'AllowPinnedFolderPersonalFolder'  # Personal folder (user profile)
-    )
-
-    foreach ($name in $foldersToEnable) {
-        # 1 = enabled; also set the ProviderSet flag so the policy is honored
-        New-ItemProperty -Path $startPolicyKey `
-                         -Name $name `
-                         -PropertyType DWord `
-                         -Value 1 `
-                         -Force | Out-Null
-
-        New-ItemProperty -Path $startPolicyKey `
-                         -Name ($name + '_ProviderSet') `
-                         -PropertyType DWord `
-                         -Value 1 `
-                         -Force | Out-Null
-    }
-
-    Write-Host "Start menu 'Folders' enabled: Settings, File Explorer, Documents, Downloads, Personal folder." -ForegroundColor Blue
-}
-
-# ---------------------------
 # Account picture (profile)
 # ---------------------------
 
@@ -629,20 +538,11 @@ if (-not (Test-Path $intlKey)) {
     New-Item -Path $intlKey -Force | Out-Null
 }
 
-# First day of week: 0 = Monday, 6 = Sunday
-New-ItemProperty -Path $intlKey -Name 'iFirstDayOfWeek' -PropertyType String -Value '0' -Force | Out-Null
-
 # Short date → 2017-04-05
 New-ItemProperty -Path $intlKey -Name 'sShortDate' -PropertyType String -Value 'yyyy-MM-dd' -Force | Out-Null
 
 # Long date → Wednesday, 5 April, 2017
-New-ItemProperty -Path $intlKey -Name 'sLongDate' -PropertyType String -Value 'dddd, d MMMM, yyyy' -Force | Out-Null
-
-# Short time → 09:40 / 14:40
-New-ItemProperty -Path $intlKey -Name 'sShortTime' -PropertyType String -Value 'HH:mm' -Force | Out-Null
-
-# Long time → 09:40:07 / 14:40:07
-New-ItemProperty -Path $intlKey -Name 'sTimeFormat' -PropertyType String -Value 'HH:mm:ss' -Force | Out-Null
+New-ItemProperty -Path $intlKey -Name 'sLongDate' -PropertyType String -Value 'dddd, dd MMMM, yyyy' -Force | Out-Null
 
 # Show seconds in the system tray clock
 $clockAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'

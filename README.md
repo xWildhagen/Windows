@@ -4,7 +4,7 @@
 
 ### Installation
 
-1. (Optional) Log in to account
+1. (Optional) Log in to account(s)
 2. Windows update
 3. Winget update
 
@@ -15,6 +15,7 @@ git clone https://github.com/xWildhagen/Windows
 ```
 
 4. Microsoft Store update
+5. Driver update
 
 ## Stuff
 
@@ -32,4 +33,5 @@ git -C windows reset --hard
 - System > Display > Night light
 - System > Clipboard > Clipboard history across your devices
 - Personalisation > Colours > Accent colour (#7A6D98)
+- Accounts > Sign-in options
 - Time & Language > Language & region
