@@ -178,14 +178,8 @@ function Set-BlueLightReductionSettings {
     Set-ItemProperty -Path $blueLightKey -Name 'Data' -Value ([byte[]]$data) -Type Binary
 }
 
-try {
-    # 20:00 → 06:00, enabled, moderate colour temperature
-    Set-BlueLightReductionSettings -StartHour 20 -StartMinutes 0 -EndHour 6 -EndMinutes 0 -Enabled $true -NightColorTemperature 4500
-    Write-Host "Night light schedule set to 20:00–06:00." -ForegroundColor Blue
-}
-catch {
-    Write-Warning "Failed to configure Night light schedule: $_"
-}
+Set-BlueLightReductionSettings -StartHour 20 -StartMinutes 0 -EndHour 6 -EndMinutes 0 -Enabled $true -NightColorTemperature 4500
+Write-Host "Night light schedule set to 20:00–06:00." -ForegroundColor Blue
 
 # ---------------------------
 # Wallpaper (current user)
