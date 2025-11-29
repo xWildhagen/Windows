@@ -5,7 +5,6 @@
 ### Installation
 
 ```
-winget update
 winget update --all
 winget install git.git
 git clone https://github.com/xwildhagen/windows
@@ -19,3 +18,10 @@ git clone https://github.com/xwildhagen/windows
 git -C windows pull
 git -C windows reset --hard
 ```
+
+## Missing
+
+### Settings
+
+- System > Display > Night light
+-

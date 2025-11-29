@@ -99,60 +99,133 @@ else {
 }
 
 # ---------------------------
-# Night light schedule (20:00–06:00 via captured registry data)
+# Taskbar "End task" option
 # ---------------------------
 
-function Set-NightLightFromCapturedData {
-    [CmdletBinding()]
-    param()
+$taskbarDevKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings'
 
-    # ==========================================================
-    # TODO:
-    #   1. Configure Night light manually on a reference install
-    #      - Schedule: Set hours, 20:00 → 06:00
-    #      - Strength: whatever you like
-    #   2. Export the two keys:
-    #      - HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\default$windows.data.bluelightreduction.settings\windows.data.bluelightreduction.settings
-    #      - HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\default$windows.data.bluelightreduction.bluelightreductionstate\windows.data.bluelightreduction.bluelightreductionstate
-    #   3. From the .reg file, grab the "Data" hex for each and
-    #      convert to [byte[]](0x02,0x00,...) and paste below.
-    #
-    #   For now these are empty → script will skip Night light.
-    # ==========================================================
-
-    [byte[]]$nlSettingsData = @()
-    [byte[]]$nlStateData    = @()
-
-    if ($nlSettingsData.Count -eq 0 -or $nlStateData.Count -eq 0) {
-        Write-Host "Night light data blobs not configured in settings.ps1; skipping Night light." -ForegroundColor Yellow
-        return
-    }
-
-    $base = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current'
-
-    $settingsContainer = Join-Path $base 'default$windows.data.bluelightreduction.settings'
-    $settingsKey       = Join-Path $settingsContainer 'windows.data.bluelightreduction.settings'
-
-    $stateContainer    = Join-Path $base 'default$windows.data.bluelightreduction.bluelightreductionstate'
-    $stateKey          = Join-Path $stateContainer 'windows.data.bluelightreduction.bluelightreductionstate'
-
-    foreach ($k in @($settingsContainer, $settingsKey, $stateContainer, $stateKey)) {
-        if (-not (Test-Path $k)) {
-            New-Item -Path $k -Force | Out-Null
-        }
-    }
-
-    Set-ItemProperty -Path $settingsKey -Name 'Data' -Value $nlSettingsData -Type Binary
-    Set-ItemProperty -Path $stateKey    -Name 'Data' -Value $nlStateData    -Type Binary
-
-    Write-Host "Night light settings applied from captured registry data." -ForegroundColor Blue
+# Ensure the key exists
+if (-not (Test-Path $taskbarDevKey)) {
+    New-Item -Path $taskbarDevKey -Force | Out-Null
 }
 
+# Enable the "End task" button on taskbar right-click
+New-ItemProperty -Path $taskbarDevKey `
+                 -Name 'TaskbarEndTask' `
+                 -PropertyType DWord `
+                 -Value 1 `
+                 -Force | Out-Null
+
+Write-Host '"End task" on taskbar enabled.' -ForegroundColor Blue
+
+# ---------------------------
+# Clipboard: history + sync
+# ---------------------------
+
+$clipboardKey = 'HKCU:\Software\Microsoft\Clipboard'
+
+if (-not (Test-Path $clipboardKey)) {
+    New-Item -Path $clipboardKey -Force | Out-Null
+}
+
+# Turn ON Clipboard history
+New-ItemProperty -Path $clipboardKey `
+                 -Name 'EnableClipboardHistory' `
+                 -PropertyType DWord `
+                 -Value 1 `
+                 -Force | Out-Null
+
+# Turn ON clipboard history across your devices
+# (Enable cloud clipboard + auto sync)
+New-ItemProperty -Path $clipboardKey `
+                 -Name 'EnableCloudClipboard' `
+                 -PropertyType DWord `
+                 -Value 1 `
+                 -Force | Out-Null
+
+New-ItemProperty -Path $clipboardKey `
+                 -Name 'CloudClipboardAutomaticUpload' `
+                 -PropertyType DWord `
+                 -Value 1 `
+                 -Force | Out-Null
+
+Write-Host "Clipboard history and sync across devices enabled for current user." -ForegroundColor Blue
+
+# If running as admin, also make sure policies ALLOW these features
 try {
-    Set-NightLightFromCapturedData
+    $isAdmin = ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+    if ($isAdmin) {
+        $systemPolicyKey = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System'
+        if (-not (Test-Path $systemPolicyKey)) {
+            New-Item -Path $systemPolicyKey -Force | Out-Null
+        }
+
+        New-ItemProperty -Path $systemPolicyKey `
+                         -Name 'AllowClipboardHistory' `
+                         -PropertyType DWord `
+                         -Value 1 `
+                         -Force | Out-Null
+
+        New-ItemProperty -Path $systemPolicyKey `
+                         -Name 'AllowCrossDeviceClipboard' `
+                         -PropertyType DWord `
+                         -Value 1 `
+                         -Force | Out-Null
+
+        Write-Host "Clipboard group policy set to allow history + cross-device sync." -ForegroundColor Blue
+    }
 }
 catch {
-    Write-Warning "Failed to apply Night light settings: $_"
+    Write-Warning "Failed to update clipboard policy keys: $_"
+}
+
+# ---------------------------
+# Windows optional features:
+# Hyper-V, VM Platform, WHP,
+# Sandbox, WSL
+# ---------------------------
+
+$features = @(
+    'Microsoft-Hyper-V',                 # Hyper-V
+    'VirtualMachinePlatform',            # Virtual Machine Platform
+    'HypervisorPlatform',                # Windows Hypervisor Platform
+    'Containers-DisposableClientVM',     # Windows Sandbox
+    'Microsoft-Windows-Subsystem-Linux'  # Windows Subsystem for Linux (WSL)
+)
+
+$isAdmin = ([Security.Principal.WindowsPrincipal] `
+    [Security.Principal.WindowsIdentity]::GetCurrent()
+).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Warning "Skipping Windows optional features: run settings.ps1 as Administrator to enable Hyper-V, WSL, Sandbox, etc."
+}
+else {
+    foreach ($feature in $features) {
+        Write-Host "Enabling optional feature: $feature" -ForegroundColor Blue
+
+        try {
+            $result = Enable-WindowsOptionalFeature `
+                -Online `
+                -FeatureName $feature `
+                -All `
+                -NoRestart `
+                -ErrorAction Stop
+
+            if ($result.RestartNeeded) {
+                Write-Host "  -> $feature enabled (restart required)." -ForegroundColor Blue
+            }
+            else {
+                Write-Host "  -> $feature enabled." -ForegroundColor Blue
+            }
+        }
+        catch {
+            Write-Warning "  -> Failed to enable $feature: $_ (feature may be unavailable on this edition of Windows)."
+        }
+    }
 }
 
 # ---------------------------
