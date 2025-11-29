@@ -15,7 +15,7 @@ Write-Host "=== settings.ps1 ===" -ForegroundColor Blue
 # ---------------------------
 
 $homeFolder   = [Environment]::GetFolderPath('UserProfile')  # "HOME_FOLDER"
-$repoRoot     = Join-Path $homeFolder 'windows'
+$repoRoot     = Join-Path $homeFolder 'Windows'
 $assetsRoot   = Join-Path $repoRoot 'assets'
 
 $wallpaperPath  = Join-Path $assetsRoot 'aurora.png'       # Desktop wallpaper (source)
@@ -584,9 +584,9 @@ Write-Host "Time & language > Typing set." -ForegroundColor Blue
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
-Write-Host "  [L] Log off"    -ForegroundColor Blue
-Write-Host "  [R] Reboot"     -ForegroundColor Blue
-Write-Host "  [N] Do nothing" -ForegroundColor Blue
+Write-Host "  [L] Log off"    -ForegroundColor Magenta
+Write-Host "  [R] Reboot"     -ForegroundColor Magenta
+Write-Host "  [N] Do nothing" -ForegroundColor Magenta
 
 Write-Host "Choose an option (L/R/N): " -ForegroundColor Magenta -NoNewLine
 $action = Read-Host
