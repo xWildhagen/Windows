@@ -280,31 +280,6 @@ public class WallpaperHelper
 }
 
 # ---------------------------
-# Desktop icon settings – hide Recycle Bin
-# ---------------------------
-
-$rbClsid = '{645FF040-5081-101B-9F08-00AA002F954E}'
-
-$hideIconsBase = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons'
-$newStartKey   = Join-Path $hideIconsBase 'NewStartPanel'
-$classStartKey = Join-Path $hideIconsBase 'ClassicStartMenu'
-
-foreach ($key in @($newStartKey, $classStartKey)) {
-    if (-not (Test-Path $key)) {
-        New-Item -Path $key -Force | Out-Null
-    }
-
-    # 1 = hidden, 0 = visible
-    New-ItemProperty -Path $key `
-                     -Name $rbClsid `
-                     -PropertyType DWord `
-                     -Value 1 `
-                     -Force | Out-Null
-}
-
-Write-Host "Recycle Bin desktop icon disabled." -ForegroundColor Blue
-
-# ---------------------------
 # Lock screen (policy + CSP, all users)
 # ---------------------------
 
@@ -377,114 +352,6 @@ function Set-LockScreenImage {
     New-ItemProperty -Path $cspKey -Name 'LockScreenImageUrl'    -PropertyType String -Value $targetPath -Force | Out-Null
 
     Write-Host "Lock screen image set to $targetPath." -ForegroundColor Blue
-}
-
-# ---------------------------
-# Start menu: layout & toggles
-# ---------------------------
-
-$explorerAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
-$startKey            = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Start'
-
-# Make sure the Start key exists for the per-user Start settings
-if (-not (Test-Path $startKey)) {
-    New-Item -Path $startKey -Force | Out-Null
-}
-
-# Layout: "More pins"
-# Start_Layout: 0 = Default, 1 = More Pins, 2 = More Recommendations
-New-ItemProperty -Path $explorerAdvancedKey `
-                 -Name 'Start_Layout' `
-                 -PropertyType DWord `
-                 -Value 1 `
-                 -Force | Out-Null
-
-# Start > Show recently added apps: OFF
-# ShowRecentList: 1 = on, 0 = off
-New-ItemProperty -Path $startKey `
-                 -Name 'ShowRecentList' `
-                 -PropertyType DWord `
-                 -Value 0 `
-                 -Force | Out-Null
-
-# Start > Show most used apps: OFF
-# ShowFrequentList: 1 = on, 0 = off
-New-ItemProperty -Path $startKey `
-                 -Name 'ShowFrequentList' `
-                 -PropertyType DWord `
-                 -Value 0 `
-                 -Force | Out-Null
-
-# Start > Show recommended files in Start, recent files in File Explorer, and items in Jump Lists: OFF
-# Start_TrackDocs: 1 = on (default), 0 = off
-New-ItemProperty -Path $explorerAdvancedKey `
-                 -Name 'Start_TrackDocs' `
-                 -PropertyType DWord `
-                 -Value 0 `
-                 -Force | Out-Null
-
-# Start > Show recommendations for tips, shortcuts, new apps, and more: OFF
-# Start_IrisRecommendations: 1 = on (default), 0 = off
-New-ItemProperty -Path $explorerAdvancedKey `
-                 -Name 'Start_IrisRecommendations' `
-                 -PropertyType DWord `
-                 -Value 0 `
-                 -Force | Out-Null
-
-# Start > Show account-related notifications: OFF
-# Start_AccountNotifications: 1 = on (default), 0 = off
-New-ItemProperty -Path $explorerAdvancedKey `
-                 -Name 'Start_AccountNotifications' `
-                 -PropertyType DWord `
-                 -Value 0 `
-                 -Force | Out-Null
-
-Write-Host "Start menu layout set to 'More pins' and all requested Start toggles disabled." -ForegroundColor Blue
-
-# ---------------------------
-# Start menu "Folders" (next to power button)
-# ---------------------------
-
-$startPolicyKey = 'HKLM:\Software\Microsoft\PolicyManager\current\device\Start'
-
-# Needs elevation because we're writing to HKLM
-$isAdmin = ([Security.Principal.WindowsPrincipal] `
-    [Security.Principal.WindowsIdentity]::GetCurrent()
-).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-if (-not $isAdmin) {
-    Write-Warning "Skipping Start menu folders: run settings.ps1 as Administrator to configure them."
-}
-else {
-    if (-not (Test-Path $startPolicyKey)) {
-        New-Item -Path $startPolicyKey -Force | Out-Null
-    }
-
-    # These correspond to the toggles under Personalization > Start > Folders
-    $foldersToEnable = @(
-        'AllowPinnedFolderSettings',       # Settings
-        'AllowPinnedFolderFileExplorer',   # File Explorer
-        'AllowPinnedFolderDocuments',      # Documents
-        'AllowPinnedFolderDownloads',      # Downloads
-        'AllowPinnedFolderPersonalFolder'  # Personal folder (user profile)
-    )
-
-    foreach ($name in $foldersToEnable) {
-        # 1 = enabled; also set the ProviderSet flag so the policy is honored
-        New-ItemProperty -Path $startPolicyKey `
-                         -Name $name `
-                         -PropertyType DWord `
-                         -Value 1 `
-                         -Force | Out-Null
-
-        New-ItemProperty -Path $startPolicyKey `
-                         -Name ($name + '_ProviderSet') `
-                         -PropertyType DWord `
-                         -Value 1 `
-                         -Force | Out-Null
-    }
-
-    Write-Host "Start menu 'Folders' enabled: Settings, File Explorer, Documents, Downloads, Personal folder." -ForegroundColor Blue
 }
 
 # ---------------------------
@@ -597,6 +464,139 @@ try {
 }
 catch {
     Write-Warning "Failed to set profile picture: $_"
+}
+
+# ---------------------------
+# Desktop icon settings – hide Recycle Bin
+# ---------------------------
+
+$rbClsid = '{645FF040-5081-101B-9F08-00AA002F954E}'
+
+$hideIconsBase = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons'
+$newStartKey   = Join-Path $hideIconsBase 'NewStartPanel'
+$classStartKey = Join-Path $hideIconsBase 'ClassicStartMenu'
+
+foreach ($key in @($newStartKey, $classStartKey)) {
+    if (-not (Test-Path $key)) {
+        New-Item -Path $key -Force | Out-Null
+    }
+
+    # 1 = hidden, 0 = visible
+    New-ItemProperty -Path $key `
+                     -Name $rbClsid `
+                     -PropertyType DWord `
+                     -Value 1 `
+                     -Force | Out-Null
+}
+
+Write-Host "Recycle Bin desktop icon disabled." -ForegroundColor Blue
+
+# ---------------------------
+# Start menu: layout & toggles
+# ---------------------------
+
+$explorerAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+$startKey            = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Start'
+
+# Make sure the Start key exists for the per-user Start settings
+if (-not (Test-Path $startKey)) {
+    New-Item -Path $startKey -Force | Out-Null
+}
+
+# Layout: "More pins"
+# Start_Layout: 0 = Default, 1 = More Pins, 2 = More Recommendations
+New-ItemProperty -Path $explorerAdvancedKey `
+                 -Name 'Start_Layout' `
+                 -PropertyType DWord `
+                 -Value 1 `
+                 -Force | Out-Null
+
+# Start > Show recently added apps: OFF
+# ShowRecentList: 1 = on, 0 = off
+New-ItemProperty -Path $startKey `
+                 -Name 'ShowRecentList' `
+                 -PropertyType DWord `
+                 -Value 0 `
+                 -Force | Out-Null
+
+# Start > Show most used apps: OFF
+# ShowFrequentList: 1 = on, 0 = off
+New-ItemProperty -Path $startKey `
+                 -Name 'ShowFrequentList' `
+                 -PropertyType DWord `
+                 -Value 0 `
+                 -Force | Out-Null
+
+# Start > Show recommended files in Start, recent files in File Explorer, and items in Jump Lists: OFF
+# Start_TrackDocs: 1 = on (default), 0 = off
+New-ItemProperty -Path $explorerAdvancedKey `
+                 -Name 'Start_TrackDocs' `
+                 -PropertyType DWord `
+                 -Value 0 `
+                 -Force | Out-Null
+
+# Start > Show recommendations for tips, shortcuts, new apps, and more: OFF
+# Start_IrisRecommendations: 1 = on (default), 0 = off
+New-ItemProperty -Path $explorerAdvancedKey `
+                 -Name 'Start_IrisRecommendations' `
+                 -PropertyType DWord `
+                 -Value 0 `
+                 -Force | Out-Null
+
+# Start > Show account-related notifications: OFF
+# Start_AccountNotifications: 1 = on (default), 0 = off
+New-ItemProperty -Path $explorerAdvancedKey `
+                 -Name 'Start_AccountNotifications' `
+                 -PropertyType DWord `
+                 -Value 0 `
+                 -Force | Out-Null
+
+Write-Host "Start menu layout set to 'More pins' and all requested Start toggles disabled." -ForegroundColor Blue
+
+# ---------------------------
+# Start menu "Folders" (next to power button)
+# ---------------------------
+
+$startPolicyKey = 'HKLM:\Software\Microsoft\PolicyManager\current\device\Start'
+
+# Needs elevation because we're writing to HKLM
+$isAdmin = ([Security.Principal.WindowsPrincipal] `
+    [Security.Principal.WindowsIdentity]::GetCurrent()
+).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Warning "Skipping Start menu folders: run settings.ps1 as Administrator to configure them."
+}
+else {
+    if (-not (Test-Path $startPolicyKey)) {
+        New-Item -Path $startPolicyKey -Force | Out-Null
+    }
+
+    # These correspond to the toggles under Personalization > Start > Folders
+    $foldersToEnable = @(
+        'AllowPinnedFolderSettings',       # Settings
+        'AllowPinnedFolderFileExplorer',   # File Explorer
+        'AllowPinnedFolderDocuments',      # Documents
+        'AllowPinnedFolderDownloads',      # Downloads
+        'AllowPinnedFolderPersonalFolder'  # Personal folder (user profile)
+    )
+
+    foreach ($name in $foldersToEnable) {
+        # 1 = enabled; also set the ProviderSet flag so the policy is honored
+        New-ItemProperty -Path $startPolicyKey `
+                         -Name $name `
+                         -PropertyType DWord `
+                         -Value 1 `
+                         -Force | Out-Null
+
+        New-ItemProperty -Path $startPolicyKey `
+                         -Name ($name + '_ProviderSet') `
+                         -PropertyType DWord `
+                         -Value 1 `
+                         -Force | Out-Null
+    }
+
+    Write-Host "Start menu 'Folders' enabled: Settings, File Explorer, Documents, Downloads, Personal folder." -ForegroundColor Blue
 }
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
