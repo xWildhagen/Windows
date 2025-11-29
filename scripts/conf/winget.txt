@@ -17,6 +17,7 @@ Microsoft.WindowsTerminal
 Mega.MEGASync
 Proton.ProtonVPN
 Microsoft.WSL
+DEVCOM.JetBrainsMonoNerdFont
 
 #########
 # STUFF
