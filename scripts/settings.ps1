@@ -13,6 +13,7 @@ Write-Host "=== settings.ps1 ===" -ForegroundColor Blue
 # ---------------------------
 # Paths (HOME_FOLDER\windows)
 # ---------------------------
+
 $homeFolder   = [Environment]::GetFolderPath('UserProfile')  # "HOME_FOLDER"
 $repoRoot     = Join-Path $homeFolder 'windows'
 $assetsRoot   = Join-Path $repoRoot 'assets'
@@ -279,6 +280,38 @@ public class WallpaperHelper
     Write-Host "Wallpaper set." -ForegroundColor Blue
 }
 
+try {
+    Set-CustomWallpaper -Path $wallpaperPath
+}
+catch {
+    Write-Warning "Failed to set wallpaper: $_"
+}
+
+# ---------------------------
+# Desktop icon settings – hide Recycle Bin
+# ---------------------------
+
+$rbClsid = '{645FF040-5081-101B-9F08-00AA002F954E}'
+
+$hideIconsBase = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons'
+$newStartKey   = Join-Path $hideIconsBase 'NewStartPanel'
+$classStartKey = Join-Path $hideIconsBase 'ClassicStartMenu'
+
+foreach ($key in @($newStartKey, $classStartKey)) {
+    if (-not (Test-Path $key)) {
+        New-Item -Path $key -Force | Out-Null
+    }
+
+    # 1 = hidden, 0 = visible
+    New-ItemProperty -Path $key `
+                     -Name $rbClsid `
+                     -PropertyType DWord `
+                     -Value 1 `
+                     -Force | Out-Null
+}
+
+Write-Host "Recycle Bin desktop icon disabled." -ForegroundColor Blue
+
 # ---------------------------
 # Lock screen (policy + CSP, all users)
 # ---------------------------
@@ -354,142 +387,12 @@ function Set-LockScreenImage {
     Write-Host "Lock screen image set to $targetPath." -ForegroundColor Blue
 }
 
-# ---------------------------
-# Account picture (profile)
-# ---------------------------
-
-function Set-CustomAccountPicture {
-    param(
-        [Parameter(Mandatory)]
-        [string]$Path
-    )
-
-    if (-not (Test-Path -LiteralPath $Path)) {
-        Write-Warning "Profile picture file not found: $Path"
-        return
-    }
-
-    # This part writes to HKLM, so it needs an elevated session.
-    $isAdmin = ([Security.Principal.WindowsPrincipal] `
-        [Security.Principal.WindowsIdentity]::GetCurrent()
-    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-    if (-not $isAdmin) {
-        Write-Warning "Skipping profile picture: settings.ps1 must be run as Administrator to change it."
-        return
-    }
-
-    # Current user SID
-    $userSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-
-    # Folder used by Windows for account pictures: %PUBLIC%\AccountPictures\<SID>
-    $accountPicturesRoot = Join-Path $env:PUBLIC 'AccountPictures'
-    $userPicturesDir     = Join-Path $accountPicturesRoot $userSid
-
-    if (Test-Path $userPicturesDir) {
-        Remove-Item $userPicturesDir -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    New-Item -Path $userPicturesDir -ItemType Directory -Force | Out-Null
-
-    # Create multiple sizes from the source PNG – Windows expects several ImageXX entries.
-    Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
-
-    $sizes = @(32, 40, 48, 96, 192, 240, 448)
-    $sourceImage = [System.Drawing.Image]::FromFile($Path)
-
-    try {
-        foreach ($size in $sizes) {
-            $destFile = Join-Path $userPicturesDir ("Image{0}.png" -f $size)
-
-            $bmp      = New-Object System.Drawing.Bitmap ($size, $size)
-            $graphics = [System.Drawing.Graphics]::FromImage($bmp)
-
-            try {
-                $graphics.InterpolationMode  = 'HighQualityBicubic'
-                $graphics.SmoothingMode      = 'HighQuality'
-                $graphics.PixelOffsetMode    = 'HighQuality'
-                $graphics.CompositingQuality = 'HighQuality'
-
-                $graphics.DrawImage($sourceImage, 0, 0, $size, $size)
-            }
-            finally {
-                $graphics.Dispose()
-            }
-
-            $bmp.Save($destFile, [System.Drawing.Imaging.ImageFormat]::Png)
-            $bmp.Dispose()
-        }
-    }
-    finally {
-        $sourceImage.Dispose()
-    }
-
-    # Point registry to the generated images:
-    # HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\<SID>\ImageXX
-    $regKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\$userSid"
-    if (-not (Test-Path $regKey)) {
-        New-Item -Path $regKey -Force | Out-Null
-    }
-
-    foreach ($size in $sizes) {
-        $valueName = "Image{0}" -f $size
-        $valuePath = Join-Path $userPicturesDir ("Image{0}.png" -f $size)
-
-        New-ItemProperty -Path $regKey -Name $valueName -PropertyType String -Value $valuePath -Force | Out-Null
-    }
-
-    Write-Host "Profile picture set for SID $userSid." -ForegroundColor Blue
-}
-
-# ---------------------------
-# Apply wallpaper + lock screen + profile
-# ---------------------------
-
-try {
-    Set-CustomWallpaper -Path $wallpaperPath
-}
-catch {
-    Write-Warning "Failed to set wallpaper: $_"
-}
-
 try {
     Set-LockScreenImage -Path $lockScreenPath
 }
 catch {
     Write-Warning "Failed to set lock screen image: $_"
 }
-
-try {
-    Set-CustomAccountPicture -Path $profilePicPath
-}
-catch {
-    Write-Warning "Failed to set profile picture: $_"
-}
-
-# ---------------------------
-# Desktop icon settings – hide Recycle Bin
-# ---------------------------
-
-$rbClsid = '{645FF040-5081-101B-9F08-00AA002F954E}'
-
-$hideIconsBase = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons'
-$newStartKey   = Join-Path $hideIconsBase 'NewStartPanel'
-$classStartKey = Join-Path $hideIconsBase 'ClassicStartMenu'
-
-foreach ($key in @($newStartKey, $classStartKey)) {
-    if (-not (Test-Path $key)) {
-        New-Item -Path $key -Force | Out-Null
-    }
-
-    # 1 = hidden, 0 = visible
-    New-ItemProperty -Path $key `
-                     -Name $rbClsid `
-                     -PropertyType DWord `
-                     -Value 1 `
-                     -Force | Out-Null
-}
-
-Write-Host "Recycle Bin desktop icon disabled." -ForegroundColor Blue
 
 # ---------------------------
 # Start menu: layout & toggles
@@ -597,6 +500,100 @@ else {
     }
 
     Write-Host "Start menu 'Folders' enabled: Settings, File Explorer, Documents, Downloads, Personal folder." -ForegroundColor Blue
+}
+
+# ---------------------------
+# Account picture (profile)
+# ---------------------------
+
+function Set-CustomAccountPicture {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        Write-Warning "Profile picture file not found: $Path"
+        return
+    }
+
+    # This part writes to HKLM, so it needs an elevated session.
+    $isAdmin = ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+    if (-not $isAdmin) {
+        Write-Warning "Skipping profile picture: settings.ps1 must be run as Administrator to change it."
+        return
+    }
+
+    # Current user SID
+    $userSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+
+    # Folder used by Windows for account pictures: %PUBLIC%\AccountPictures\<SID>
+    $accountPicturesRoot = Join-Path $env:PUBLIC 'AccountPictures'
+    $userPicturesDir     = Join-Path $accountPicturesRoot $userSid
+
+    if (Test-Path $userPicturesDir) {
+        Remove-Item $userPicturesDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    New-Item -Path $userPicturesDir -ItemType Directory -Force | Out-Null
+
+    # Create multiple sizes from the source PNG – Windows expects several ImageXX entries.
+    Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
+
+    $sizes = @(32, 40, 48, 96, 192, 240, 448)
+    $sourceImage = [System.Drawing.Image]::FromFile($Path)
+
+    try {
+        foreach ($size in $sizes) {
+            $destFile = Join-Path $userPicturesDir ("Image{0}.png" -f $size)
+
+            $bmp      = New-Object System.Drawing.Bitmap ($size, $size)
+            $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+
+            try {
+                $graphics.InterpolationMode  = 'HighQualityBicubic'
+                $graphics.SmoothingMode      = 'HighQuality'
+                $graphics.PixelOffsetMode    = 'HighQuality'
+                $graphics.CompositingQuality = 'HighQuality'
+
+                $graphics.DrawImage($sourceImage, 0, 0, $size, $size)
+            }
+            finally {
+                $graphics.Dispose()
+            }
+
+            $bmp.Save($destFile, [System.Drawing.Imaging.ImageFormat]::Png)
+            $bmp.Dispose()
+        }
+    }
+    finally {
+        $sourceImage.Dispose()
+    }
+
+    # Point registry to the generated images:
+    # HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\<SID>\ImageXX
+    $regKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\$userSid"
+    if (-not (Test-Path $regKey)) {
+        New-Item -Path $regKey -Force | Out-Null
+    }
+
+    foreach ($size in $sizes) {
+        $valueName = "Image{0}" -f $size
+        $valuePath = Join-Path $userPicturesDir ("Image{0}.png" -f $size)
+
+        New-ItemProperty -Path $regKey -Name $valueName -PropertyType String -Value $valuePath -Force | Out-Null
+    }
+
+    Write-Host "Profile picture set for SID $userSid." -ForegroundColor Blue
+}
+
+try {
+    Set-CustomAccountPicture -Path $profilePicPath
+}
+catch {
+    Write-Warning "Failed to set profile picture: $_"
 }
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
