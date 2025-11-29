@@ -542,7 +542,7 @@ if (-not (Test-Path $intlKey)) {
 New-ItemProperty -Path $intlKey -Name 'sShortDate' -PropertyType String -Value 'yyyy-MM-dd' -Force | Out-Null
 
 # Long date → Wednesday, 5 April, 2017
-New-ItemProperty -Path $intlKey -Name 'sLongDate' -PropertyType String -Value 'dddd, dd MMMM, yyyy' -Force | Out-Null
+New-ItemProperty -Path $intlKey -Name 'sLongDate' -PropertyType String -Value 'dddd, dd MMMM yyyy' -Force | Out-Null
 
 # Show seconds in the system tray clock
 $clockAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
