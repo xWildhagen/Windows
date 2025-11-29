@@ -182,8 +182,6 @@ try {
     Get-Service -Name 'cbdhsvc*' -ErrorAction SilentlyContinue |
         Where-Object { $_.Status -ne 'Running' } |
         Start-Service
-
-    Write-Host "Clipboard User Service is running." -ForegroundColor Blue
 }
 catch {
     Write-Warning "Failed to start Clipboard User Service: $_"
@@ -212,8 +210,6 @@ if (-not $isAdmin) {
 }
 else {
     foreach ($feature in $features) {
-        Write-Host "Enabling optional feature: $feature" -ForegroundColor Blue
-
         try {
             $result = Enable-WindowsOptionalFeature `
                 -Online `
@@ -223,14 +219,14 @@ else {
                 -ErrorAction Stop
 
             if ($result.RestartNeeded) {
-                Write-Host "  -> $feature enabled (restart required)." -ForegroundColor Blue
+                Write-Host "$feature enabled (restart required)." -ForegroundColor Blue
             }
             else {
-                Write-Host "  -> $feature enabled." -ForegroundColor Blue
+                Write-Host "$feature enabled." -ForegroundColor Blue
             }
         }
         catch {
-            Write-Warning "  -> Failed to enable ${feature}: $_ (feature may be unavailable on this edition of Windows)."
+            Write-Warning "Failed to enable ${feature}: $_ (feature may be unavailable on this edition of Windows)."
         }
     }
 }
