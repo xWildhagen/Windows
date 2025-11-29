@@ -584,11 +584,11 @@ Write-Host "Time & language > Typing set." -ForegroundColor Blue
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
-Write-Host "  [L] Log off"    -ForegroundColor Magenta
-Write-Host "  [R] Reboot"     -ForegroundColor Magenta
-Write-Host "  [N] Do nothing" -ForegroundColor Magenta
+Write-Host "[L] Log off"    -ForegroundColor Magenta
+Write-Host "[R] Reboot"     -ForegroundColor Magenta
+Write-Host "[N] Do nothing" -ForegroundColor Magenta
 
-Write-Host "Choose an option (L/R/N): " -ForegroundColor Magenta -NoNewLine
+Write-Host "Choose an option [L/R/N]: " -ForegroundColor Magenta -NoNewLine
 $action = Read-Host
 
 switch -Regex ($action) {
