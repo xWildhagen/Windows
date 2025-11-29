@@ -47,7 +47,7 @@ if (-not (Test-Path $desktopKey)) {
 New-ItemProperty -Path $desktopKey -Name 'Win8DpiScaling' -PropertyType DWord -Value 1 -Force | Out-Null
 New-ItemProperty -Path $desktopKey -Name 'LogPixels'      -PropertyType DWord -Value $dpiValue -Force | Out-Null
 
-Write-Host "DPI scaling set to 100% (LogPixels=$dpiValue)." -ForegroundColor Blue
+Write-Host "System > Display > Scale set." -ForegroundColor Blue
 
 # ---------------------------
 # Power plan: display & sleep
@@ -79,7 +79,7 @@ if ($acMonitorExitCode -ne 0 -or
     Write-Warning "One or more powercfg commands may have failed. Try running this script in an elevated PowerShell session."
 }
 else {
-    Write-Host "Display and sleep timeouts configured." -ForegroundColor Blue
+    Write-Host "System > Power & battery > Screen, sleep & hibernate time-outs set." -ForegroundColor Blue
 }
 
 # ---------------------------
@@ -94,7 +94,7 @@ if ($esThresholdExitCode -ne 0) {
     Write-Warning "Failed to configure Energy Saver threshold (code $esThresholdExitCode). Try running this script as Administrator."
 }
 else {
-    Write-Host "Energy Saver will turn on automatically at 20% battery." -ForegroundColor Blue
+    Write-Host "System > Power & battery > Energy saver set." -ForegroundColor Blue
 }
 
 # ---------------------------
@@ -129,7 +129,7 @@ New-ItemProperty -Path $clipboardKey `
                  -Value 1 `
                  -Force | Out-Null
 
-Write-Host "Clipboard history + cloud clipboard enabled for current user." -ForegroundColor Blue
+Write-Host "System > Clipboard set." -ForegroundColor Blue
 
 # If running as admin, make sure no policies are BLOCKING clipboard history/sync
 try {
@@ -150,8 +150,6 @@ try {
                 }
             }
         }
-
-        Write-Host "Clipboard policy values reset to default (not blocking clipboard)." -ForegroundColor Blue
     }
 }
 catch {
@@ -257,7 +255,7 @@ public class WallpaperHelper
     }
 
     [WallpaperHelper]::SetWallpaper($Path)
-    Write-Host "Wallpaper set." -ForegroundColor Blue
+    Write-Host "Personalisation > Background set." -ForegroundColor Blue
 }
 
 try {
@@ -339,7 +337,7 @@ function Set-LockScreenImage {
     New-ItemProperty -Path $cspKey -Name 'LockScreenImagePath'   -PropertyType String -Value $targetPath -Force | Out-Null
     New-ItemProperty -Path $cspKey -Name 'LockScreenImageUrl'    -PropertyType String -Value $targetPath -Force | Out-Null
 
-    Write-Host "Lock screen image set to $targetPath." -ForegroundColor Blue
+    Write-Host "Personalisation > Lock screen set." -ForegroundColor Blue
 }
 
 try {
@@ -409,7 +407,7 @@ New-ItemProperty -Path $explorerAdvancedKey `
                  -Value 0 `
                  -Force | Out-Null
 
-Write-Host "Start menu layout set to 'More pins' and all requested Start toggles disabled." -ForegroundColor Blue
+Write-Host "Personalisation > Start set." -ForegroundColor Blue
 
 # ---------------------------
 # Account picture (profile)
@@ -495,7 +493,7 @@ function Set-CustomAccountPicture {
         New-ItemProperty -Path $regKey -Name $valueName -PropertyType String -Value $valuePath -Force | Out-Null
     }
 
-    Write-Host "Profile picture set for SID $userSid." -ForegroundColor Blue
+    Write-Host "Accounts > Your info set." -ForegroundColor Blue
 }
 
 try {
@@ -556,7 +554,7 @@ New-ItemProperty -Path $clockAdvancedKey `
                  -Value 1 `
                  -Force | Out-Null
 
-Write-Host "Date & time: time zone & formats applied." -ForegroundColor Blue
+Write-Host "Time & language > Date & time set." -ForegroundColor Blue
 
 # ---------------------------
 # Typing: text suggestions
@@ -582,7 +580,7 @@ New-ItemProperty -Path $inputSettingsKey `
                  -Value 1 `
                  -Force | Out-Null
 
-Write-Host "Typing: hardware + multilingual text suggestions enabled." -ForegroundColor Blue
+Write-Host "Time & language > Typing set." -ForegroundColor Blue
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
