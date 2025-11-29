@@ -25,3 +25,5 @@ git -C windows reset --hard
 
 - System > Display > Night light
 - System > Clipboard > Clipboard history across your devices
+- Personalisation > Colours > Accent colour
+- Personalisation > Colours > Accent colour > Show accent colour on title bars and window borders

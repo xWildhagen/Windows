@@ -311,8 +311,6 @@ public class WallpaperHelper
 # Accent colour (#7A6D98)
 # ---------------------------
 
-Write-Host "Setting accent colour to #7A6D98..." -ForegroundColor Blue
-
 $htmlAccentColor = '#7A6D98'
 
 # Dark mode for system + apps, transparency on
@@ -372,13 +370,32 @@ catch {
     # AccentPalette might not exist yet – safe to ignore
 }
 
-# These are what the "Personalisation > Colours > Accent colour" UI reads
-Set-ItemProperty -LiteralPath $accentKey -Name 'StartColorMenu'  -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
-Set-ItemProperty -LiteralPath $accentKey -Name 'AccentColorMenu' -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
-Set-ItemProperty -LiteralPath $dwmKey    -Name 'AccentColor'     -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
+Write-Host "Accent colour set to #7A6D98" -ForegroundColor Blue
 
-# Show accent colour on title bars and window borders
-Set-ItemProperty -LiteralPath $dwmKey    -Name 'ColorPrevalence' -Type DWord -Value 1 -Force
+# ---------------------------
+# Desktop icon settings – hide Recycle Bin
+# ---------------------------
+
+$rbClsid = '{645FF040-5081-101B-9F08-00AA002F954E}'
+
+$hideIconsBase = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons'
+$newStartKey   = Join-Path $hideIconsBase 'NewStartPanel'
+$classStartKey = Join-Path $hideIconsBase 'ClassicStartMenu'
+
+foreach ($key in @($newStartKey, $classStartKey)) {
+    if (-not (Test-Path $key)) {
+        New-Item -Path $key -Force | Out-Null
+    }
+
+    # 1 = hidden, 0 = visible
+    New-ItemProperty -Path $key `
+                     -Name $rbClsid `
+                     -PropertyType DWord `
+                     -Value 1 `
+                     -Force | Out-Null
+}
+
+Write-Host "Recycle Bin desktop icon disabled." -ForegroundColor Blue
 
 # ---------------------------
 # Lock screen (policy + CSP, all users)
