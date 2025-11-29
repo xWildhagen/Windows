@@ -4,13 +4,16 @@ Write-Host "=== stuff.ps1 ===" -ForegroundColor Blue
 $homeFolder = [Environment]::GetFolderPath('UserProfile')
 
 # Base folder in OneDrive where the Terminal config lives
-$terminalConfigDir  = Join-Path $homeFolder 'OneDrive - Wildhagen\MAIN\TERMINAL'
+$terminalConfigDir = Join-Path $homeFolder 'OneDrive - Wildhagen\MAIN\TERMINAL'
 
-# Name of the config file inside that folder
-$terminalConfigFile = 'TERMINAL.json'
+# Name of the config file in OneDrive (your custom file)
+$terminalConfigSourceFile = 'TERMINAL.json'
+
+# Destination file name that Windows Terminal actually uses
+$terminalConfigTargetFile = 'settings.json'
 
 # Full path to your saved Terminal config in OneDrive
-$terminalConfigPath = Join-Path $terminalConfigDir $terminalConfigFile
+$terminalConfigPath = Join-Path $terminalConfigDir $terminalConfigSourceFile
 
 if (-not (Test-Path $terminalConfigPath)) {
     Write-Warning "Terminal config not found at: $terminalConfigPath"
@@ -33,9 +36,13 @@ if (-not $terminalPackages) {
 
 foreach ($pkg in $terminalPackages) {
     $localState = Join-Path $pkg.FullName 'LocalState'
-    if (-not (Test-Path $localState)) { continue }
 
-    $targetSettings = Join-Path $localState $terminalConfigFile
+    # Ensure LocalState exists (Terminal may not have been run yet)
+    if (-not (Test-Path $localState)) {
+        New-Item -ItemType Directory -Path $localState -Force | Out-Null
+    }
+
+    $targetSettings = Join-Path $localState $terminalConfigTargetFile
 
     # Replace with your OneDrive version
     Copy-Item -Path $terminalConfigPath -Destination $targetSettings -Force
