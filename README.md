@@ -24,4 +24,4 @@ git -C windows reset --hard
 ### Settings
 
 - System > Display > Night light
--
+- System > Clipboard > Clipboard history across your devices

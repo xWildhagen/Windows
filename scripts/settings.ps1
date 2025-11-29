@@ -308,6 +308,79 @@ public class WallpaperHelper
 }
 
 # ---------------------------
+# Accent colour (#7A6D98)
+# ---------------------------
+
+Write-Host "Setting accent colour to #7A6D98..." -ForegroundColor Blue
+
+$htmlAccentColor = '#7A6D98'
+
+# Dark mode for system + apps, transparency on
+$personalizeKey = 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+New-Item -Path $personalizeKey -Force | Out-Null
+
+Set-ItemProperty -LiteralPath $personalizeKey -Name 'SystemUsesLightTheme' -Type DWord -Value 0 -Force
+Set-ItemProperty -LiteralPath $personalizeKey -Name 'AppsUseLightTheme'   -Type DWord -Value 0 -Force
+Set-ItemProperty -LiteralPath $personalizeKey -Name 'ColorPrevalence'     -Type DWord -Value 0 -Force
+Set-ItemProperty -LiteralPath $personalizeKey -Name 'EnableTransparency'  -Type DWord -Value 1 -Force
+
+Add-Type -AssemblyName 'System.Drawing'
+
+$accentColor = [System.Drawing.ColorTranslator]::FromHtml($htmlAccentColor)
+
+function ConvertTo-DWord {
+    param(
+        [System.Drawing.Color]$Color
+    )
+
+    [byte[]]$bytes = @(
+        $Color.R
+        $Color.G
+        $Color.B
+        $Color.A
+    )
+
+    [System.BitConverter]::ToUInt32($bytes, 0)
+}
+
+$accentKey = 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent'
+$dwmKey    = 'Registry::HKCU\Software\Microsoft\Windows\DWM'
+
+New-Item -Path $accentKey -Force | Out-Null
+New-Item -Path $dwmKey    -Force | Out-Null
+
+# These are what the "Personalisation > Colours > Accent colour" UI reads
+Set-ItemProperty -LiteralPath $accentKey -Name 'StartColorMenu'  -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
+Set-ItemProperty -LiteralPath $accentKey -Name 'AccentColorMenu' -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
+Set-ItemProperty -LiteralPath $dwmKey    -Name 'AccentColor'     -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
+
+# Optional: update palette so it also shows as the current swatch
+try {
+    $params = @{
+        LiteralPath = $accentKey
+        Name        = 'AccentPalette'
+    }
+    $palette = Get-ItemPropertyValue @params
+    $index   = 20
+    $palette[$index++] = $accentColor.R
+    $palette[$index++] = $accentColor.G
+    $palette[$index++] = $accentColor.B
+    $palette[$index++] = $accentColor.A
+    Set-ItemProperty @params -Value $palette -Type Binary -Force
+}
+catch {
+    # AccentPalette might not exist yet – safe to ignore
+}
+
+# These are what the "Personalisation > Colours > Accent colour" UI reads
+Set-ItemProperty -LiteralPath $accentKey -Name 'StartColorMenu'  -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
+Set-ItemProperty -LiteralPath $accentKey -Name 'AccentColorMenu' -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
+Set-ItemProperty -LiteralPath $dwmKey    -Name 'AccentColor'     -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
+
+# Show accent colour on title bars and window borders
+Set-ItemProperty -LiteralPath $dwmKey    -Name 'ColorPrevalence' -Type DWord -Value 1 -Force
+
+# ---------------------------
 # Lock screen (policy + CSP, all users)
 # ---------------------------
 
