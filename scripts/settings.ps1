@@ -99,87 +99,28 @@ else {
 }
 
 # ---------------------------
-# Night light schedule (20:00-06:00)
+# Night light schedule (20:00–06:00 via .reg)
 # ---------------------------
 
-function Set-BlueLightReductionSettings {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)][ValidateRange(0, 23)][int]$StartHour,
-        [Parameter(Mandatory = $true)][ValidateSet(0, 15, 30, 45)][int]$StartMinutes,
-        [Parameter(Mandatory = $true)][ValidateRange(0, 23)][int]$EndHour,
-        [Parameter(Mandatory = $true)][ValidateSet(0, 15, 30, 45)][int]$EndMinutes,
-        [Parameter(Mandatory = $true)][bool]$Enabled,
-        [Parameter(Mandatory = $true)][ValidateRange(1200, 6500)][int]$NightColorTemperature
-    )
+$nightlightReg = Join-Path $repoRoot 'scripts\conf\nightlight.reg'
 
-    # Build Night light settings blob (CloudStore format for 20H2+/11)
-    $data = (0x43, 0x42, 0x01, 0x00, 0x0A, 0x02, 0x01, 0x00, 0x2A, 0x06)
+if (Test-Path -LiteralPath $nightlightReg) {
+    Write-Host "Applying Night light schedule (20:00–06:00) from:`n  $nightlightReg" -ForegroundColor Blue
 
-    $epochTime = [System.DateTimeOffset]::new((Get-Date)).ToUnixTimeSeconds()
-    $data += $epochTime -band 0x7F -bor 0x80
-    $data += ($epochTime -shr 7)  -band 0x7F -bor 0x80
-    $data += ($epochTime -shr 14) -band 0x7F -bor 0x80
-    $data += ($epochTime -shr 21) -band 0x7F -bor 0x80
-    $data +=  $epochTime -shr 28
+    & reg.exe import $nightlightReg
+    $regExitCode = $LASTEXITCODE
 
-    $data += (0x2A, 0x2B, 0x0E, 0x1D, 0x43, 0x42, 0x01, 0x00)
-
-    if ($Enabled) {
-        $data += (0x02, 0x01)
+    if ($regExitCode -ne 0) {
+        Write-Warning "Night light .reg import failed with exit code $regExitCode."
     }
-
-    $data += (0xCA, 0x14, 0x0E)
-    $data += $StartHour
-    $data += 0x2E
-    $data += $StartMinutes
-    $data += (0x00, 0xCA, 0x1E, 0x0E)
-    $data += $EndHour
-    $data += 0x2E
-    $data += $EndMinutes
-    $data += (0x00, 0xCF, 0x28)
-
-    $data += ($NightColorTemperature -band 0x3F) * 2 + 0x80
-    $data += ($NightColorTemperature -shr 6)
-
-    $data += (0xCA, 0x32, 0x00, 0xCA, 0x3C, 0x00, 0x00, 0x00, 0x00, 0x00)
-
-    # Ensure registry path exists:
-    $cloudStoreBase    = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore'
-    if (-not (Test-Path $cloudStoreBase)) {
-        New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion' -Name 'CloudStore' -Force | Out-Null
+    else {
+        Write-Host "Night light schedule applied. Sign out/reboot may be required for it to fully take effect." -ForegroundColor Blue
     }
-
-    $storeKey          = Join-Path $cloudStoreBase 'Store'
-    if (-not (Test-Path $storeKey)) {
-        New-Item -Path $cloudStoreBase -Name 'Store' -Force | Out-Null
-    }
-
-    $defaultAccountKey = Join-Path $storeKey 'DefaultAccount'
-    if (-not (Test-Path $defaultAccountKey)) {
-        New-Item -Path $storeKey -Name 'DefaultAccount' -Force | Out-Null
-    }
-
-    $blueLightKeyRoot  = Join-Path $defaultAccountKey 'Current'
-    if (-not (Test-Path $blueLightKeyRoot)) {
-        New-Item -Path $defaultAccountKey -Name 'Current' -Force | Out-Null
-    }
-
-    $blueLightOuter    = Join-Path $blueLightKeyRoot 'default$windows.data.bluelightreduction.settings'
-    if (-not (Test-Path $blueLightOuter)) {
-        New-Item -Path $blueLightKeyRoot -Name 'default$windows.data.bluelightreduction.settings' -Force | Out-Null
-    }
-
-    $blueLightKey      = Join-Path $blueLightOuter 'windows.data.bluelightreduction.settings'
-    if (-not (Test-Path $blueLightKey)) {
-        New-Item -Path $blueLightOuter -Name 'windows.data.bluelightreduction.settings' -Force | Out-Null
-    }
-
-    Set-ItemProperty -Path $blueLightKey -Name 'Data' -Value ([byte[]]$data) -Type Binary
 }
-
-Set-BlueLightReductionSettings -StartHour 20 -StartMinutes 0 -EndHour 6 -EndMinutes 0 -Enabled $true -NightColorTemperature 4500
-Write-Host "Night light schedule set to 20:00–06:00." -ForegroundColor Blue
+else {
+    Write-Host "Night light .reg file not found, skipping Night light schedule." -ForegroundColor Yellow
+    Write-Host "Expected at: $nightlightReg" -ForegroundColor Yellow
+}
 
 # ---------------------------
 # Wallpaper (current user)
