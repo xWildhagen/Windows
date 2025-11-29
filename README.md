@@ -1,14 +1,20 @@
-# Arch
+# Windows
 
 ## Initial setup
 
 ### Installation
 
+1. (Optional) Log in to account
+2. Windows update
+3. Winget update
+
 ```
 winget update --all
 winget install git.git
-git clone https://github.com/xwildhagen/windows
+git clone https://github.com/xWildhagen/Windows
 ```
+
+4. Microsoft Store update
 
 ## Stuff
 
