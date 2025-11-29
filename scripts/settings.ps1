@@ -596,6 +596,66 @@ catch {
     Write-Warning "Failed to set profile picture: $_"
 }
 
+# ---------------------------
+# Date & time: time zone & formats
+# ---------------------------
+
+# System time zone (UTC+1 – W. Europe Standard Time)
+try {
+    $tzId = 'W. Europe Standard Time'  # UTC+1 (e.g. Oslo, Berlin, etc.)
+    $isAdmin = ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+    if ($isAdmin) {
+        if (Get-Command Set-TimeZone -ErrorAction SilentlyContinue) {
+            Set-TimeZone -Id $tzId
+        }
+        else {
+            & tzutil.exe /s $tzId
+        }
+    }
+    else {
+        Write-Warning "Skipping time zone change: run settings.ps1 as Administrator to change the system time zone."
+    }
+}
+catch {
+    Write-Warning "Failed to set time zone: $_"
+}
+
+# Per-user regional/date/time formatting
+$intlKey = 'HKCU:\Control Panel\International'
+if (-not (Test-Path $intlKey)) {
+    New-Item -Path $intlKey -Force | Out-Null
+}
+
+# First day of week: 0 = Monday, 6 = Sunday
+New-ItemProperty -Path $intlKey -Name 'iFirstDayOfWeek' -PropertyType String -Value '0' -Force | Out-Null
+
+# Short date → 2017-04-05
+New-ItemProperty -Path $intlKey -Name 'sShortDate' -PropertyType String -Value 'yyyy-MM-dd' -Force | Out-Null
+
+# Long date → Wednesday, 5 April, 2017
+New-ItemProperty -Path $intlKey -Name 'sLongDate' -PropertyType String -Value 'dddd, d MMMM, yyyy' -Force | Out-Null
+
+# Short time → 09:40 / 14:40
+New-ItemProperty -Path $intlKey -Name 'sShortTime' -PropertyType String -Value 'HH:mm' -Force | Out-Null
+
+# Long time → 09:40:07 / 14:40:07
+New-ItemProperty -Path $intlKey -Name 'sTimeFormat' -PropertyType String -Value 'HH:mm:ss' -Force | Out-Null
+
+# Show seconds in the system tray clock
+$clockAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+if (-not (Test-Path $clockAdvancedKey)) {
+    New-Item -Path $clockAdvancedKey -Force | Out-Null
+}
+
+New-ItemProperty -Path $clockAdvancedKey `
+                 -Name 'ShowSecondsInSystemClock' `
+                 -PropertyType DWord `
+                 -Value 1 `
+                 -Force | Out-Null
+
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
 Write-Host "  [L] Log off"    -ForegroundColor Blue
