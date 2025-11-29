@@ -658,6 +658,32 @@ New-ItemProperty -Path $clockAdvancedKey `
 
 Write-Host "Date & time: time zone & formats applied." -ForegroundColor Blue
 
+# ---------------------------
+# Typing: text suggestions
+# ---------------------------
+
+$inputSettingsKey = 'HKCU:\Software\Microsoft\Input\Settings'
+
+if (-not (Test-Path $inputSettingsKey)) {
+    New-Item -Path $inputSettingsKey -Force | Out-Null
+}
+
+# Show text suggestions when typing on the physical keyboard
+New-ItemProperty -Path $inputSettingsKey `
+                 -Name 'EnableHwkbTextPrediction' `
+                 -PropertyType DWord `
+                 -Value 1 `
+                 -Force | Out-Null
+
+# Multilingual text suggestions
+New-ItemProperty -Path $inputSettingsKey `
+                 -Name 'MultilingualEnabled' `
+                 -PropertyType DWord `
+                 -Value 1 `
+                 -Force | Out-Null
+
+Write-Host "Typing: hardware + multilingual text suggestions enabled." -ForegroundColor Blue
+
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
 Write-Host "  [L] Log off"    -ForegroundColor Blue
