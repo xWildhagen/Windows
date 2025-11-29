@@ -85,8 +85,6 @@ else {
 # Energy Saver: auto threshold
 # ---------------------------
 
-Write-Host "Configuring Energy Saver threshold." -ForegroundColor Blue
-
 # On battery: turn Energy Saver on automatically at 20%
 powercfg /setdcvalueindex SCHEME_CURRENT SUB_ENERGYSAVER ESBATTTHRESHOLD 20
 $esThresholdExitCode = $LASTEXITCODE
@@ -116,13 +114,11 @@ New-ItemProperty -Path $taskbarDevKey `
                  -Value 1 `
                  -Force | Out-Null
 
-Write-Host '"End task" on taskbar enabled.' -ForegroundColor Blue
+Write-Host 'End task on taskbar enabled.' -ForegroundColor Blue
 
 # ---------------------------
 # Clipboard: history + sync
 # ---------------------------
-
-Write-Host "Configuring clipboard history + cloud sync..." -ForegroundColor Blue
 
 # Per-user clipboard settings (current user)
 $clipboardKey = 'HKCU:\Software\Microsoft\Clipboard'
