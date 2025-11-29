@@ -658,6 +658,105 @@ New-ItemProperty -Path $clockAdvancedKey `
 
 Write-Host "Date & time: time zone & formats applied." -ForegroundColor Blue
 
+# ---------------------------
+# Language & region
+#   - Add nb-NO + en-GB
+#   - Remove en-US
+#   - Download language packs (if possible)
+#   - Regional format: Norway
+# ---------------------------
+
+try {
+    $desiredLanguages = @('nb-NO', 'en-GB')
+
+    $isAdmin = ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+    # --- Language packs (requires Windows 10/11 with LanguagePackManagement + admin) ---
+    if ($isAdmin -and (Get-Command Install-Language -ErrorAction SilentlyContinue)) {
+        try {
+            # Install nb-NO + en-GB with all available features
+            # (Install-Language downloads the language pack + features like typing, speech, etc.) :contentReference[oaicite:0]{index=0}
+            $installed = @()
+            if (Get-Command Get-InstalledLanguage -ErrorAction SilentlyContinue) {
+                $installed = Get-InstalledLanguage -ErrorAction SilentlyContinue
+            }
+
+            foreach ($lang in $desiredLanguages) {
+                if (-not $installed -or -not ($installed.Language -contains $lang)) {
+                    Write-Host "Installing language pack: $lang (all features)..." -ForegroundColor Blue
+                    Install-Language -Language $lang -ErrorAction Stop | Out-Null
+                }
+                else {
+                    Write-Host "Language pack already installed: $lang" -ForegroundColor DarkGray
+                }
+            }
+
+            # Remove en-US language pack if removable
+            if ($installed -and ($installed.Language -contains 'en-US')) {
+                Write-Host "Removing language pack: en-US" -ForegroundColor Blue
+                Uninstall-Language -Language 'en-US' -ErrorAction SilentlyContinue | Out-Null
+            }
+        }
+        catch {
+            Write-Warning "Language pack install/remove failed: $_"
+        }
+    }
+    else {
+        Write-Warning "Skipping language pack install/remove: run settings.ps1 as Administrator on Windows 11/10 with LanguagePackManagement to automate this."
+    }
+
+    # --- Preferred languages for CURRENT USER (Time & language > Language & region) ---
+    try {
+        Import-Module International -ErrorAction SilentlyContinue
+
+        $userLangList = Get-WinUserLanguageList
+
+        # Drop any en-US entries
+        $userLangList = $userLangList | Where-Object { $_.LanguageTag -ne 'en-US' }
+
+        # Ensure English (United Kingdom) is first
+        if (-not ($userLangList.LanguageTag -contains 'en-GB')) {
+            $enGb = (New-WinUserLanguageList -Language 'en-GB')[0]
+            $userLangList.Insert(0, $enGb)
+        }
+
+        # Ensure Norsk bokmål is present
+        if (-not ($userLangList.LanguageTag -contains 'nb-NO')) {
+            $nbNo = (New-WinUserLanguageList -Language 'nb-NO')[0]
+            $userLangList.Add($nbNo)
+        }
+
+        Set-WinUserLanguageList -LanguageList $userLangList -Force
+
+        # Windows display language override → English (United Kingdom)
+        Set-WinUILanguageOverride -Language 'en-GB'
+
+        Write-Host "Preferred languages set to: en-GB (display), nb-NO. en-US removed from list." -ForegroundColor Blue
+    }
+    catch {
+        Write-Warning "Failed to adjust per-user language list: $_"
+    }
+
+    # --- Region + regional format (Time & language > Language & region) ---
+    try {
+        # Country or region = Norway (GeoId 177) :contentReference[oaicite:1]{index=1}
+        Set-WinHomeLocation -GeoId 177
+
+        # Regional format = Norway (culture nb-NO) :contentReference[oaicite:2]{index=2}
+        Set-Culture -CultureInfo 'nb-NO'
+
+        Write-Host "Region set to Norway and regional format set to nb-NO." -ForegroundColor Blue
+    }
+    catch {
+        Write-Warning "Failed to apply region/format: $_"
+    }
+}
+catch {
+    Write-Warning "Unexpected error while configuring language & region: $_"
+}
+
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
 Write-Host "  [L] Log off"    -ForegroundColor Blue
