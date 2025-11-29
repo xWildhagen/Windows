@@ -25,4 +25,4 @@ git -C windows reset --hard
 
 - System > Display > Night light
 - System > Clipboard > Clipboard history across your devices
-- Personalisation > Colours > Accent colour
+- Personalisation > Colours > Accent colour (#7A6D98)

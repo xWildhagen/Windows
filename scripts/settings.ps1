@@ -280,71 +280,6 @@ public class WallpaperHelper
 }
 
 # ---------------------------
-# Accent colour (#7A6D98)
-# ---------------------------
-
-$htmlAccentColor = '#7A6D98'
-
-# Dark mode for system + apps, transparency on
-$personalizeKey = 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
-New-Item -Path $personalizeKey -Force | Out-Null
-
-Set-ItemProperty -LiteralPath $personalizeKey -Name 'SystemUsesLightTheme' -Type DWord -Value 0 -Force
-Set-ItemProperty -LiteralPath $personalizeKey -Name 'AppsUseLightTheme'   -Type DWord -Value 0 -Force
-Set-ItemProperty -LiteralPath $personalizeKey -Name 'ColorPrevalence'     -Type DWord -Value 0 -Force
-Set-ItemProperty -LiteralPath $personalizeKey -Name 'EnableTransparency'  -Type DWord -Value 1 -Force
-
-Add-Type -AssemblyName 'System.Drawing'
-
-$accentColor = [System.Drawing.ColorTranslator]::FromHtml($htmlAccentColor)
-
-function ConvertTo-DWord {
-    param(
-        [System.Drawing.Color]$Color
-    )
-
-    [byte[]]$bytes = @(
-        $Color.R
-        $Color.G
-        $Color.B
-        $Color.A
-    )
-
-    [System.BitConverter]::ToUInt32($bytes, 0)
-}
-
-$accentKey = 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent'
-$dwmKey    = 'Registry::HKCU\Software\Microsoft\Windows\DWM'
-
-New-Item -Path $accentKey -Force | Out-Null
-New-Item -Path $dwmKey    -Force | Out-Null
-
-# These are what the "Personalisation > Colours > Accent colour" UI reads
-Set-ItemProperty -LiteralPath $accentKey -Name 'StartColorMenu'  -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
-Set-ItemProperty -LiteralPath $accentKey -Name 'AccentColorMenu' -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
-Set-ItemProperty -LiteralPath $dwmKey    -Name 'AccentColor'     -Type DWord -Value (ConvertTo-DWord $accentColor) -Force
-
-# Optional: update palette so it also shows as the current swatch
-try {
-    $params = @{
-        LiteralPath = $accentKey
-        Name        = 'AccentPalette'
-    }
-    $palette = Get-ItemPropertyValue @params
-    $index   = 20
-    $palette[$index++] = $accentColor.R
-    $palette[$index++] = $accentColor.G
-    $palette[$index++] = $accentColor.B
-    $palette[$index++] = $accentColor.A
-    Set-ItemProperty @params -Value $palette -Type Binary -Force
-}
-catch {
-    # AccentPalette might not exist yet – safe to ignore
-}
-
-Write-Host "Accent colour set to #7A6D98" -ForegroundColor Blue
-
-# ---------------------------
 # Desktop icon settings – hide Recycle Bin
 # ---------------------------
 
@@ -443,6 +378,68 @@ function Set-LockScreenImage {
 
     Write-Host "Lock screen image set to $targetPath." -ForegroundColor Blue
 }
+
+# ---------------------------
+# Start menu: layout & toggles
+# ---------------------------
+
+$explorerAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+$startKey            = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Start'
+
+# Make sure the Start key exists for the per-user Start settings
+if (-not (Test-Path $startKey)) {
+    New-Item -Path $startKey -Force | Out-Null
+}
+
+# Layout: "More pins"
+# Start_Layout: 0 = Default, 1 = More Pins, 2 = More Recommendations
+New-ItemProperty -Path $explorerAdvancedKey `
+                 -Name 'Start_Layout' `
+                 -PropertyType DWord `
+                 -Value 1 `
+                 -Force | Out-Null
+
+# Start > Show recently added apps: OFF
+# ShowRecentList: 1 = on, 0 = off
+New-ItemProperty -Path $startKey `
+                 -Name 'ShowRecentList' `
+                 -PropertyType DWord `
+                 -Value 0 `
+                 -Force | Out-Null
+
+# Start > Show most used apps: OFF
+# ShowFrequentList: 1 = on, 0 = off
+New-ItemProperty -Path $startKey `
+                 -Name 'ShowFrequentList' `
+                 -PropertyType DWord `
+                 -Value 0 `
+                 -Force | Out-Null
+
+# Start > Show recommended files in Start, recent files in File Explorer, and items in Jump Lists: OFF
+# Start_TrackDocs: 1 = on (default), 0 = off
+New-ItemProperty -Path $explorerAdvancedKey `
+                 -Name 'Start_TrackDocs' `
+                 -PropertyType DWord `
+                 -Value 0 `
+                 -Force | Out-Null
+
+# Start > Show recommendations for tips, shortcuts, new apps, and more: OFF
+# Start_IrisRecommendations: 1 = on (default), 0 = off
+New-ItemProperty -Path $explorerAdvancedKey `
+                 -Name 'Start_IrisRecommendations' `
+                 -PropertyType DWord `
+                 -Value 0 `
+                 -Force | Out-Null
+
+# Start > Show account-related notifications: OFF
+# Start_AccountNotifications: 1 = on (default), 0 = off
+New-ItemProperty -Path $explorerAdvancedKey `
+                 -Name 'Start_AccountNotifications' `
+                 -PropertyType DWord `
+                 -Value 0 `
+                 -Force | Out-Null
+
+Write-Host "Start menu layout set to 'More pins' and all requested Start toggles disabled." -ForegroundColor Blue
 
 # ---------------------------
 # Account picture (profile)
