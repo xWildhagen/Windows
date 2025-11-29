@@ -122,6 +122,9 @@ Write-Host '"End task" on taskbar enabled.' -ForegroundColor Blue
 # Clipboard: history + sync
 # ---------------------------
 
+Write-Host "Configuring clipboard history + cloud sync..." -ForegroundColor Blue
+
+# Per-user clipboard settings (current user)
 $clipboardKey = 'HKCU:\Software\Microsoft\Clipboard'
 
 if (-not (Test-Path $clipboardKey)) {
@@ -135,23 +138,23 @@ New-ItemProperty -Path $clipboardKey `
                  -Value 1 `
                  -Force | Out-Null
 
-# Turn ON clipboard history across your devices
-# (Enable cloud clipboard + auto sync)
+# Turn ON cloud clipboard + auto sync across devices
 New-ItemProperty -Path $clipboardKey `
                  -Name 'EnableCloudClipboard' `
                  -PropertyType DWord `
                  -Value 1 `
                  -Force | Out-Null
 
+# 1 = auto sync, 0 = manual sync
 New-ItemProperty -Path $clipboardKey `
                  -Name 'CloudClipboardAutomaticUpload' `
                  -PropertyType DWord `
                  -Value 1 `
                  -Force | Out-Null
 
-Write-Host "Clipboard history and sync across devices enabled for current user." -ForegroundColor Blue
+Write-Host "Clipboard history + cloud clipboard enabled for current user." -ForegroundColor Blue
 
-# If running as admin, also make sure policies ALLOW these features
+# If running as admin, make sure no policies are BLOCKING clipboard history/sync
 try {
     $isAdmin = ([Security.Principal.WindowsPrincipal] `
         [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -159,27 +162,55 @@ try {
 
     if ($isAdmin) {
         $systemPolicyKey = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System'
-        if (-not (Test-Path $systemPolicyKey)) {
-            New-Item -Path $systemPolicyKey -Force | Out-Null
+
+        if (Test-Path $systemPolicyKey) {
+            foreach ($name in 'AllowClipboardHistory','AllowCrossDeviceClipboard','EnableCloudClipboard','CloudClipboardAutomaticUpload') {
+                try {
+                    Remove-ItemProperty -Path $systemPolicyKey -Name $name -ErrorAction SilentlyContinue
+                }
+                catch {
+                    # ignore if value doesn't exist / cannot be removed
+                }
+            }
         }
 
-        New-ItemProperty -Path $systemPolicyKey `
-                         -Name 'AllowClipboardHistory' `
-                         -PropertyType DWord `
-                         -Value 1 `
-                         -Force | Out-Null
-
-        New-ItemProperty -Path $systemPolicyKey `
-                         -Name 'AllowCrossDeviceClipboard' `
-                         -PropertyType DWord `
-                         -Value 1 `
-                         -Force | Out-Null
-
-        Write-Host "Clipboard group policy set to allow history + cross-device sync." -ForegroundColor Blue
+        Write-Host "Clipboard policy values reset to default (not blocking clipboard)." -ForegroundColor Blue
     }
 }
 catch {
-    Write-Warning "Failed to update clipboard policy keys: $_"
+    Write-Warning "Failed to adjust clipboard policy keys: $_"
+}
+
+# Enable "Share across devices" infrastructure (CDP) for this user
+try {
+    $cdpKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\CDP'
+    if (-not (Test-Path $cdpKey)) {
+        New-Item -Path $cdpKey -Force | Out-Null
+    }
+
+    # 1 = allow sharing across devices with same Microsoft account
+    New-ItemProperty -Path $cdpKey `
+                     -Name 'CdpSessionUserAuthzPolicy' `
+                     -PropertyType DWord `
+                     -Value 1 `
+                     -Force | Out-Null
+
+    Write-Host "CDP/share-across-devices enabled for current user." -ForegroundColor Blue
+}
+catch {
+    Write-Warning "Failed to set CDP (share across devices) key: $_"
+}
+
+# Make sure Clipboard User Service is running so changes actually apply
+try {
+    Get-Service -Name 'cbdhsvc*' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Status -ne 'Running' } |
+        Start-Service
+
+    Write-Host "Clipboard User Service is running." -ForegroundColor Blue
+}
+catch {
+    Write-Warning "Failed to start Clipboard User Service: $_"
 }
 
 # ---------------------------
