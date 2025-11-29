@@ -177,26 +177,6 @@ catch {
     Write-Warning "Failed to adjust clipboard policy keys: $_"
 }
 
-# Enable "Share across devices" infrastructure (CDP) for this user
-try {
-    $cdpKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\CDP'
-    if (-not (Test-Path $cdpKey)) {
-        New-Item -Path $cdpKey -Force | Out-Null
-    }
-
-    # 1 = allow sharing across devices with same Microsoft account
-    New-ItemProperty -Path $cdpKey `
-                     -Name 'CdpSessionUserAuthzPolicy' `
-                     -PropertyType DWord `
-                     -Value 1 `
-                     -Force | Out-Null
-
-    Write-Host "CDP/share-across-devices enabled for current user." -ForegroundColor Blue
-}
-catch {
-    Write-Warning "Failed to set CDP (share across devices) key: $_"
-}
-
 # Make sure Clipboard User Service is running so changes actually apply
 try {
     Get-Service -Name 'cbdhsvc*' -ErrorAction SilentlyContinue |
