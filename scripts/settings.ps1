@@ -223,7 +223,7 @@ else {
             }
         }
         catch {
-            Write-Warning "  -> Failed to enable $feature: $_ (feature may be unavailable on this edition of Windows)."
+            Write-Warning "  -> Failed to enable ${feature}: $_ (feature may be unavailable on this edition of Windows)."
         }
     }
 }
