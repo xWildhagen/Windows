@@ -1,4 +1,13 @@
+<#
+    stuff.ps1
+    - Applies your Windows Terminal config from OneDrive to all local Terminal installs
+#>
+
 Write-Host "=== stuff.ps1 ===" -ForegroundColor Blue
+
+# ---------------------------
+# Resolve paths
+# ---------------------------
 
 # Resolve current user's home folder (C:\Users\<user>)
 $homeFolder = [Environment]::GetFolderPath('UserProfile')
@@ -20,9 +29,13 @@ if (-not (Test-Path $terminalConfigPath)) {
     return
 }
 
+# ---------------------------
+# Locate Windows Terminal packages
+# ---------------------------
+
 # Windows Terminal package folders (Store / winget install)
-$packagesRoot = Join-Path $env:LOCALAPPDATA 'Packages'
-$terminalPackages = @()
+$packagesRoot      = Join-Path $env:LOCALAPPDATA 'Packages'
+$terminalPackages  = @()
 
 if (Test-Path $packagesRoot) {
     $terminalPackages = Get-ChildItem -Path $packagesRoot -Directory -ErrorAction SilentlyContinue |
@@ -33,6 +46,10 @@ if (-not $terminalPackages) {
     Write-Warning "No Windows Terminal package folder found under $packagesRoot"
     return
 }
+
+# ---------------------------
+# Apply config to each package
+# ---------------------------
 
 foreach ($pkg in $terminalPackages) {
     $localState = Join-Path $pkg.FullName 'LocalState'
@@ -46,5 +63,6 @@ foreach ($pkg in $terminalPackages) {
 
     # Replace with your OneDrive version
     Copy-Item -Path $terminalConfigPath -Destination $targetSettings -Force
+
     Write-Host "Applied terminal config to $targetSettings" -ForegroundColor Green
 }

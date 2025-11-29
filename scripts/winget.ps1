@@ -1,4 +1,4 @@
-<# 
+<#
     winget.ps1
     - Reads package IDs from .\conf\winget.txt
     - Skips comments (# ...) and empty lines
@@ -12,9 +12,16 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# ---------------------------
+# Header
+# ---------------------------
 Write-Host "=== winget.ps1 ===" -ForegroundColor Blue
 Write-Host "Config : $ConfigPath"
+Write-Host ""
 
+# ---------------------------
+# Basic validation
+# ---------------------------
 if (-not (Test-Path -LiteralPath $ConfigPath)) {
     Write-Error "Config file not found: $ConfigPath"
     exit 1
@@ -25,7 +32,9 @@ if (-not (Get-Command -Name 'winget.exe' -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-# Optional: refresh sources (comment out if you don't want this)
+# ---------------------------
+# Optional: refresh sources
+# ---------------------------
 try {
     Write-Host "Updating winget sources..."
     winget source update | Out-Null
@@ -34,6 +43,9 @@ catch {
     Write-Warning "Failed to update winget sources: $($_.Exception.Message)"
 }
 
+# ---------------------------
+# Read package IDs
+# ---------------------------
 $ids = Get-Content -LiteralPath $ConfigPath |
     ForEach-Object { $_.Trim() } |
     Where-Object { $_ -ne '' -and -not $_.StartsWith('#') }
@@ -43,6 +55,9 @@ if (-not $ids) {
     exit 0
 }
 
+# ---------------------------
+# Install each package
+# ---------------------------
 foreach ($id in $ids) {
     Write-Host "=== Installing winget package: $id ===" -ForegroundColor Blue
 
@@ -74,4 +89,5 @@ foreach ($id in $ids) {
     }
 }
 
+Write-Host ""
 Write-Host "All entries from winget.txt processed." -ForegroundColor Green

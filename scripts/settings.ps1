@@ -8,12 +8,14 @@ param()
 
 $ErrorActionPreference = 'Stop'
 
+# ---------------------------
+# Header
+# ---------------------------
 Write-Host "=== settings.ps1 ===" -ForegroundColor Blue
 
 # ---------------------------
-# Paths (HOME_FOLDER\windows)
+# Paths (HOME_FOLDER\Windows)
 # ---------------------------
-
 $homeFolder   = [Environment]::GetFolderPath('UserProfile')  # "HOME_FOLDER"
 $repoRoot     = Join-Path $homeFolder 'Windows'
 $assetsRoot   = Join-Path $repoRoot 'assets'
@@ -26,10 +28,11 @@ Write-Host "Repo root:        $repoRoot"
 Write-Host "Wallpaper image:  $wallpaperPath"
 Write-Host "Lock screen:      $lockScreenPath"
 Write-Host "Profile picture:  $profilePicPath"
+Write-Host ""
 
-# ---------------------------
-# Set 100% display scaling
-# ---------------------------
+# =====================================================================
+# DISPLAY: 100% scaling
+# =====================================================================
 
 # 100% scaling corresponds to 96 DPI
 $dpiValue   = 96
@@ -44,14 +47,15 @@ if (-not (Test-Path $desktopKey)) {
 # Enable custom DPI scaling and set it to 100%
 # Win8DpiScaling = 1 → use custom DPI
 # LogPixels      = 96 (decimal) → 100% scaling
-New-ItemProperty -Path $desktopKey -Name 'Win8DpiScaling' -PropertyType DWord -Value 1 -Force | Out-Null
+New-ItemProperty -Path $desktopKey -Name 'Win8DpiScaling' -PropertyType DWord -Value 1         -Force | Out-Null
 New-ItemProperty -Path $desktopKey -Name 'LogPixels'      -PropertyType DWord -Value $dpiValue -Force | Out-Null
 
 Write-Host "System > Display > Scale set." -ForegroundColor Blue
+Write-Host ""
 
-# ---------------------------
-# Power plan: display & sleep
-# ---------------------------
+# =====================================================================
+# POWER: screen off & sleep time-outs
+# =====================================================================
 
 # Plugged in (AC)
 # - Turn screen off after 30 minutes
@@ -71,20 +75,21 @@ $dcMonitorExitCode = $LASTEXITCODE
 powercfg /change standby-timeout-dc 30     # minutes
 $dcSleepExitCode = $LASTEXITCODE
 
-if ($acMonitorExitCode -ne 0 -or
-    $acSleepExitCode   -ne 0 -or
-    $dcMonitorExitCode -ne 0 -or
-    $dcSleepExitCode   -ne 0) {
+if (    $acMonitorExitCode -ne 0 `
+     -or $acSleepExitCode   -ne 0 `
+     -or $dcMonitorExitCode -ne 0 `
+     -or $dcSleepExitCode   -ne 0) {
 
     Write-Warning "One or more powercfg commands may have failed. Try running this script in an elevated PowerShell session."
 }
 else {
     Write-Host "System > Power & battery > Screen, sleep & hibernate time-outs set." -ForegroundColor Blue
 }
+Write-Host ""
 
-# ---------------------------
-# Energy Saver: auto threshold
-# ---------------------------
+# =====================================================================
+# ENERGY SAVER: automatic threshold
+# =====================================================================
 
 # On battery: turn Energy Saver on automatically at 20%
 powercfg /setdcvalueindex SCHEME_CURRENT SUB_ENERGYSAVER ESBATTTHRESHOLD 20
@@ -96,10 +101,11 @@ if ($esThresholdExitCode -ne 0) {
 else {
     Write-Host "System > Power & battery > Energy saver set." -ForegroundColor Blue
 }
+Write-Host ""
 
-# ---------------------------
-# Clipboard: history + sync
-# ---------------------------
+# =====================================================================
+# CLIPBOARD: history + cloud sync
+# =====================================================================
 
 # Per-user clipboard settings (current user)
 $clipboardKey = 'HKCU:\Software\Microsoft\Clipboard'
@@ -165,12 +171,12 @@ try {
 catch {
     Write-Warning "Failed to start Clipboard User Service: $_"
 }
+Write-Host ""
 
-# ---------------------------
-# Windows optional features:
-# Hyper-V, VM Platform, WHP,
-# Sandbox, WSL
-# ---------------------------
+# =====================================================================
+# WINDOWS OPTIONAL FEATURES
+# Hyper-V, VM Platform, WHP, Sandbox, WSL
+# =====================================================================
 
 $features = @(
     'Microsoft-Hyper-V',                 # Hyper-V
@@ -209,12 +215,14 @@ else {
         }
     }
 }
+Write-Host ""
 
-# ---------------------------
-# Wallpaper (current user)
-# ---------------------------
+# =====================================================================
+# WALLPAPER (current user)
+# =====================================================================
 
 function Set-CustomWallpaper {
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string]$Path
@@ -264,12 +272,14 @@ try {
 catch {
     Write-Warning "Failed to set wallpaper: $_"
 }
+Write-Host ""
 
-# ---------------------------
-# Lock screen (policy + CSP, all users)
-# ---------------------------
+# =====================================================================
+# LOCK SCREEN (policy + CSP, all users)
+# =====================================================================
 
 function Set-LockScreenImage {
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string]$Path
@@ -333,7 +343,7 @@ function Set-LockScreenImage {
         New-Item -Path $cspKey -Force | Out-Null
     }
 
-    New-ItemProperty -Path $cspKey -Name 'LockScreenImageStatus' -PropertyType DWord  -Value 1          -Force | Out-Null
+    New-ItemProperty -Path $cspKey -Name 'LockScreenImageStatus' -PropertyType DWord  -Value 1           -Force | Out-Null
     New-ItemProperty -Path $cspKey -Name 'LockScreenImagePath'   -PropertyType String -Value $targetPath -Force | Out-Null
     New-ItemProperty -Path $cspKey -Name 'LockScreenImageUrl'    -PropertyType String -Value $targetPath -Force | Out-Null
 
@@ -346,10 +356,11 @@ try {
 catch {
     Write-Warning "Failed to set lock screen image: $_"
 }
+Write-Host ""
 
-# ---------------------------
-# Start menu: layout & toggles
-# ---------------------------
+# =====================================================================
+# START MENU: layout & toggles
+# =====================================================================
 
 $explorerAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
 $startKey            = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Start'
@@ -408,12 +419,14 @@ New-ItemProperty -Path $explorerAdvancedKey `
                  -Force | Out-Null
 
 Write-Host "Personalisation > Start set." -ForegroundColor Blue
+Write-Host ""
 
-# ---------------------------
-# Account picture (profile)
-# ---------------------------
+# =====================================================================
+# ACCOUNT PICTURE (profile)
+# =====================================================================
 
 function Set-CustomAccountPicture {
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string]$Path
@@ -449,7 +462,7 @@ function Set-CustomAccountPicture {
     # Create multiple sizes from the source PNG – Windows expects several ImageXX entries.
     Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
 
-    $sizes = @(32, 40, 48, 96, 192, 240, 448)
+    $sizes       = @(32, 40, 48, 96, 192, 240, 448)
     $sourceImage = [System.Drawing.Image]::FromFile($Path)
 
     try {
@@ -502,10 +515,11 @@ try {
 catch {
     Write-Warning "Failed to set profile picture: $_"
 }
+Write-Host ""
 
-# ---------------------------
-# Date & time: time zone & formats
-# ---------------------------
+# =====================================================================
+# DATE & TIME: time zone & formats
+# =====================================================================
 
 # System time zone (UTC+1 – W. Europe Standard Time)
 try {
@@ -537,10 +551,10 @@ if (-not (Test-Path $intlKey)) {
 }
 
 # Short date → 2017-04-05
-New-ItemProperty -Path $intlKey -Name 'sShortDate' -PropertyType String -Value 'yyyy-MM-dd' -Force | Out-Null
+New-ItemProperty -Path $intlKey -Name 'sShortDate' -PropertyType String -Value 'yyyy-MM-dd'          -Force | Out-Null
 
 # Long date → Wednesday, 5 April, 2017
-New-ItemProperty -Path $intlKey -Name 'sLongDate' -PropertyType String -Value 'dddd, dd MMMM yyyy' -Force | Out-Null
+New-ItemProperty -Path $intlKey -Name 'sLongDate' -PropertyType String -Value 'dddd, dd MMMM yyyy'   -Force | Out-Null
 
 # Show seconds in the system tray clock
 $clockAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
@@ -555,10 +569,11 @@ New-ItemProperty -Path $clockAdvancedKey `
                  -Force | Out-Null
 
 Write-Host "Time & language > Date & time set." -ForegroundColor Blue
+Write-Host ""
 
-# ---------------------------
-# Typing: text suggestions
-# ---------------------------
+# =====================================================================
+# TYPING: text suggestions
+# =====================================================================
 
 $inputSettingsKey = 'HKCU:\Software\Microsoft\Input\Settings'
 
@@ -581,12 +596,19 @@ New-ItemProperty -Path $inputSettingsKey `
                  -Force | Out-Null
 
 Write-Host "Time & language > Typing set." -ForegroundColor Blue
+Write-Host ""
+
+# =====================================================================
+# FINAL PROMPT: log off / reboot
+# =====================================================================
 
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
+Write-Host ""
 
 Write-Host "[L] Log off"    -ForegroundColor Magenta
 Write-Host "[R] Reboot"     -ForegroundColor Magenta
 Write-Host "[N] Do nothing" -ForegroundColor Magenta
+Write-Host ""
 
 Write-Host "Choose an option [L/R/N]: " -ForegroundColor Magenta -NoNewLine
 $action = Read-Host

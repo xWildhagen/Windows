@@ -1,4 +1,4 @@
-<# 
+<#
     apps.ps1
     - Reads apps from .\conf\apps.txt
     - Format: Name|URL|Type|SilentArgs
@@ -8,16 +8,23 @@
 
 [CmdletBinding()]
 param(
-    [string]$ConfigPath    = "$PSScriptRoot\conf\apps.txt",
+    [string]$ConfigPath     = "$PSScriptRoot\conf\apps.txt",
     [string]$DownloadFolder = [Environment]::GetFolderPath('UserProfile') + '\Downloads'
 )
 
 $ErrorActionPreference = 'Stop'
 
+# ---------------------------
+# Header
+# ---------------------------
 Write-Host "=== apps.ps1 ===" -ForegroundColor Blue
 Write-Host "Config : $ConfigPath"
 Write-Host "Target : $DownloadFolder"
+Write-Host ""
 
+# ---------------------------
+# Basic validation
+# ---------------------------
 if (-not (Test-Path -LiteralPath $ConfigPath)) {
     Write-Error "Config file not found: $ConfigPath"
     exit 1
@@ -28,7 +35,11 @@ if (-not (Test-Path -LiteralPath $DownloadFolder)) {
     New-Item -ItemType Directory -Path $DownloadFolder -Force | Out-Null
 }
 
+# ---------------------------
+# Helper functions
+# ---------------------------
 function Get-UniquePath {
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string]$Path
@@ -53,6 +64,7 @@ function Get-UniquePath {
 }
 
 function Get-InstallerPath {
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Name,
         [Parameter(Mandatory)][string]$Type,
@@ -72,14 +84,23 @@ function Get-InstallerPath {
     }
 
     $rawPath = Join-Path $DownloadFolder ($safeName + $ext)
-    return Get-UniquePath -Path $rawPath
+    Get-UniquePath -Path $rawPath
 }
 
-# Read config, skipping comments and empty lines
+# ---------------------------
+# Read config
+# ---------------------------
 $lines = Get-Content -LiteralPath $ConfigPath | Where-Object {
     $_.Trim() -ne '' -and -not $_.Trim().StartsWith('#')
 }
 
+if (-not $lines) {
+    Write-Warning "No valid lines found in config file: $ConfigPath"
+}
+
+# ---------------------------
+# Process each app
+# ---------------------------
 foreach ($line in $lines) {
     $parts = $line.Split('|')
 
@@ -98,6 +119,7 @@ foreach ($line in $lines) {
         continue
     }
 
+    Write-Host ""
     Write-Host "=== Processing: $name ===" -ForegroundColor Blue
     Write-Host "URL   : $url"
     Write-Host "Type  : $type"
@@ -106,9 +128,9 @@ foreach ($line in $lines) {
     $installerPath = Get-InstallerPath -Name $name -Type $type -DownloadFolder $DownloadFolder
     Write-Host "File  : $installerPath"
 
-    # -----------------------------
+    # ---------------------------
     # DOWNLOAD (with User-Agent)
-    # -----------------------------
+    # ---------------------------
     try {
         Write-Host "Downloading..." -ForegroundColor Blue
 
@@ -122,11 +144,13 @@ foreach ($line in $lines) {
         Write-Host "Download complete." -ForegroundColor Green
     }
     catch {
-        Write-Warning "Failed to download ${name}: $($_.Exception.Message)"
+        Write-Warning "Failed to download '${name}': $($_.Exception.Message)"
         continue
     }
 
+    # ---------------------------
     # Install
+    # ---------------------------
     try {
         switch ($type.ToLower()) {
             'exe' {
@@ -140,7 +164,7 @@ foreach ($line in $lines) {
             }
 
             default {
-                Write-Warning "Unknown installer type '$type' for ${name}. Skipping installation."
+                Write-Warning "Unknown installer type '$type' for '${name}'. Skipping installation."
                 continue
             }
         }
@@ -157,9 +181,10 @@ foreach ($line in $lines) {
         }
     }
     catch {
-        Write-Warning "Installation failed for ${name}: $($_.Exception.Message)"
+        Write-Warning "Installation failed for '${name}': $($_.Exception.Message)"
         continue
     }
 }
 
+Write-Host ""
 Write-Host "All entries from apps.txt processed." -ForegroundColor Green
