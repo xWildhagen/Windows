@@ -99,27 +99,60 @@ else {
 }
 
 # ---------------------------
-# Night light schedule (20:00–06:00 via .reg)
+# Night light schedule (20:00–06:00 via captured registry data)
 # ---------------------------
 
-$nightlightReg = Join-Path $repoRoot 'scripts\conf\nightlight.reg'
+function Set-NightLightFromCapturedData {
+    [CmdletBinding()]
+    param()
 
-if (Test-Path -LiteralPath $nightlightReg) {
-    Write-Host "Applying Night light schedule (20:00–06:00) from:`n  $nightlightReg" -ForegroundColor Blue
+    # ==========================================================
+    # TODO:
+    #   1. Configure Night light manually on a reference install
+    #      - Schedule: Set hours, 20:00 → 06:00
+    #      - Strength: whatever you like
+    #   2. Export the two keys:
+    #      - HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\default$windows.data.bluelightreduction.settings\windows.data.bluelightreduction.settings
+    #      - HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\default$windows.data.bluelightreduction.bluelightreductionstate\windows.data.bluelightreduction.bluelightreductionstate
+    #   3. From the .reg file, grab the "Data" hex for each and
+    #      convert to [byte[]](0x02,0x00,...) and paste below.
+    #
+    #   For now these are empty → script will skip Night light.
+    # ==========================================================
 
-    & reg.exe import $nightlightReg
-    $regExitCode = $LASTEXITCODE
+    [byte[]]$nlSettingsData = @()
+    [byte[]]$nlStateData    = @()
 
-    if ($regExitCode -ne 0) {
-        Write-Warning "Night light .reg import failed with exit code $regExitCode."
+    if ($nlSettingsData.Count -eq 0 -or $nlStateData.Count -eq 0) {
+        Write-Host "Night light data blobs not configured in settings.ps1; skipping Night light." -ForegroundColor Yellow
+        return
     }
-    else {
-        Write-Host "Night light schedule applied. Sign out/reboot may be required for it to fully take effect." -ForegroundColor Blue
+
+    $base = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current'
+
+    $settingsContainer = Join-Path $base 'default$windows.data.bluelightreduction.settings'
+    $settingsKey       = Join-Path $settingsContainer 'windows.data.bluelightreduction.settings'
+
+    $stateContainer    = Join-Path $base 'default$windows.data.bluelightreduction.bluelightreductionstate'
+    $stateKey          = Join-Path $stateContainer 'windows.data.bluelightreduction.bluelightreductionstate'
+
+    foreach ($k in @($settingsContainer, $settingsKey, $stateContainer, $stateKey)) {
+        if (-not (Test-Path $k)) {
+            New-Item -Path $k -Force | Out-Null
+        }
     }
+
+    Set-ItemProperty -Path $settingsKey -Name 'Data' -Value $nlSettingsData -Type Binary
+    Set-ItemProperty -Path $stateKey    -Name 'Data' -Value $nlStateData    -Type Binary
+
+    Write-Host "Night light settings applied from captured registry data." -ForegroundColor Blue
 }
-else {
-    Write-Host "Night light .reg file not found, skipping Night light schedule." -ForegroundColor Yellow
-    Write-Host "Expected at: $nightlightReg" -ForegroundColor Yellow
+
+try {
+    Set-NightLightFromCapturedData
+}
+catch {
+    Write-Warning "Failed to apply Night light settings: $_"
 }
 
 # ---------------------------
