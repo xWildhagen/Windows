@@ -85,7 +85,7 @@ else {
 # Energy Saver: auto threshold
 # ---------------------------
 
-Write-Host "Configuring Energy Saver threshold..." -ForegroundColor Blue
+Write-Host "Configuring Energy Saver threshold." -ForegroundColor Blue
 
 # On battery: turn Energy Saver on automatically at 20%
 powercfg /setdcvalueindex SCHEME_CURRENT SUB_ENERGYSAVER ESBATTTHRESHOLD 20
@@ -96,6 +96,95 @@ if ($esThresholdExitCode -ne 0) {
 }
 else {
     Write-Host "Energy Saver will turn on automatically at 20% battery." -ForegroundColor Blue
+}
+
+# ---------------------------
+# Night light schedule (20:00-06:00)
+# ---------------------------
+
+function Set-BlueLightReductionSettings {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][ValidateRange(0, 23)][int]$StartHour,
+        [Parameter(Mandatory = $true)][ValidateSet(0, 15, 30, 45)][int]$StartMinutes,
+        [Parameter(Mandatory = $true)][ValidateRange(0, 23)][int]$EndHour,
+        [Parameter(Mandatory = $true)][ValidateSet(0, 15, 30, 45)][int]$EndMinutes,
+        [Parameter(Mandatory = $true)][bool]$Enabled,
+        [Parameter(Mandatory = $true)][ValidateRange(1200, 6500)][int]$NightColorTemperature
+    )
+
+    # Build Night light settings blob (CloudStore format for 20H2+/11)
+    $data = (0x43, 0x42, 0x01, 0x00, 0x0A, 0x02, 0x01, 0x00, 0x2A, 0x06)
+
+    $epochTime = [System.DateTimeOffset]::new((Get-Date)).ToUnixTimeSeconds()
+    $data += $epochTime -band 0x7F -bor 0x80
+    $data += ($epochTime -shr 7)  -band 0x7F -bor 0x80
+    $data += ($epochTime -shr 14) -band 0x7F -bor 0x80
+    $data += ($epochTime -shr 21) -band 0x7F -bor 0x80
+    $data +=  $epochTime -shr 28
+
+    $data += (0x2A, 0x2B, 0x0E, 0x1D, 0x43, 0x42, 0x01, 0x00)
+
+    if ($Enabled) {
+        $data += (0x02, 0x01)
+    }
+
+    $data += (0xCA, 0x14, 0x0E)
+    $data += $StartHour
+    $data += 0x2E
+    $data += $StartMinutes
+    $data += (0x00, 0xCA, 0x1E, 0x0E)
+    $data += $EndHour
+    $data += 0x2E
+    $data += $EndMinutes
+    $data += (0x00, 0xCF, 0x28)
+
+    $data += ($NightColorTemperature -band 0x3F) * 2 + 0x80
+    $data += ($NightColorTemperature -shr 6)
+
+    $data += (0xCA, 0x32, 0x00, 0xCA, 0x3C, 0x00, 0x00, 0x00, 0x00, 0x00)
+
+    # Ensure registry path exists:
+    $cloudStoreBase    = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore'
+    if (-not (Test-Path $cloudStoreBase)) {
+        New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion' -Name 'CloudStore' -Force | Out-Null
+    }
+
+    $storeKey          = Join-Path $cloudStoreBase 'Store'
+    if (-not (Test-Path $storeKey)) {
+        New-Item -Path $cloudStoreBase -Name 'Store' -Force | Out-Null
+    }
+
+    $defaultAccountKey = Join-Path $storeKey 'DefaultAccount'
+    if (-not (Test-Path $defaultAccountKey)) {
+        New-Item -Path $storeKey -Name 'DefaultAccount' -Force | Out-Null
+    }
+
+    $blueLightKeyRoot  = Join-Path $defaultAccountKey 'Current'
+    if (-not (Test-Path $blueLightKeyRoot)) {
+        New-Item -Path $defaultAccountKey -Name 'Current' -Force | Out-Null
+    }
+
+    $blueLightOuter    = Join-Path $blueLightKeyRoot 'default$windows.data.bluelightreduction.settings'
+    if (-not (Test-Path $blueLightOuter)) {
+        New-Item -Path $blueLightKeyRoot -Name 'default$windows.data.bluelightreduction.settings' -Force | Out-Null
+    }
+
+    $blueLightKey      = Join-Path $blueLightOuter 'windows.data.bluelightreduction.settings'
+    if (-not (Test-Path $blueLightKey)) {
+        New-Item -Path $blueLightOuter -Name 'windows.data.bluelightreduction.settings' -Force | Out-Null
+    }
+
+    Set-ItemProperty -Path $blueLightKey -Name 'Data' -Value ([byte[]]$data) -Type Binary
+}
+
+try {
+    # 20:00 → 06:00, enabled, moderate colour temperature
+    Set-BlueLightReductionSettings -StartHour 20 -StartMinutes 0 -EndHour 6 -EndMinutes 0 -Enabled $true -NightColorTemperature 4500
+    Write-Host "Night light schedule set to 20:00–06:00." -ForegroundColor Blue
+}
+catch {
+    Write-Warning "Failed to configure Night light schedule: $_"
 }
 
 # ---------------------------
