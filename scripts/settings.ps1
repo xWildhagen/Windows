@@ -656,6 +656,8 @@ New-ItemProperty -Path $clockAdvancedKey `
                  -Value 1 `
                  -Force | Out-Null
 
+Write-Host "Date & time: time zone & formats applied." -ForegroundColor Blue
+
 Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
 
 Write-Host "  [L] Log off"    -ForegroundColor Blue
