@@ -1,6 +1,6 @@
 # Windows
 
-## Initial setup
+## Setup
 
 ### Installation
 
@@ -16,6 +16,14 @@ git clone https://github.com/xWildhagen/Windows
 
 4. Microsoft Store update
 5. Driver update
+
+### Other
+
+1. Windows Security
+2. Log in to OneDrive
+3. Attach NAS
+4. Set up browser
+5. Re-arrange taskbar
 
 ## Stuff
 

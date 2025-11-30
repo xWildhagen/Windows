@@ -378,22 +378,6 @@ New-ItemProperty -Path $explorerAdvancedKey `
                  -Value 1 `
                  -Force | Out-Null
 
-# Start > Show recently added apps: OFF
-# ShowRecentList: 1 = on, 0 = off
-New-ItemProperty -Path $startKey `
-                 -Name 'ShowRecentList' `
-                 -PropertyType DWord `
-                 -Value 0 `
-                 -Force | Out-Null
-
-# Start > Show most used apps: OFF
-# ShowFrequentList: 1 = on, 0 = off
-New-ItemProperty -Path $startKey `
-                 -Name 'ShowFrequentList' `
-                 -PropertyType DWord `
-                 -Value 0 `
-                 -Force | Out-Null
-
 # Start > Show recommended files in Start, recent files in File Explorer, and items in Jump Lists: OFF
 # Start_TrackDocs: 1 = on (default), 0 = off
 New-ItemProperty -Path $explorerAdvancedKey `

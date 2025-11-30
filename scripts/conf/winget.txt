@@ -22,6 +22,8 @@ DEVCOM.JetBrainsMonoNerdFont
 #########
 # STUFF
 #########
+# MiKTeX.MiKTeX
+# StrawberryPerl.StrawberryPerl
 
 
 #########
