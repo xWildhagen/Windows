@@ -53,8 +53,6 @@ else {
 # Microsoft Edge folder COPY (no links, no sync)
 # ============================================================
 
-Write-Host "=== Edge folder copy ===" -ForegroundColor Blue
-
 $edgeLocalPath    = Join-Path $homeFolder 'AppData\Local\Microsoft\Edge'
 $edgeOneDrivePath = Join-Path $homeFolder 'OneDrive - Wildhagen\MAIN\EDGE\Edge'
 
@@ -69,7 +67,6 @@ if (-not (Test-Path $edgeOneDrivePath)) {
 
 # Remove existing local Edge folder completely
 if (Test-Path $edgeLocalPath) {
-    Write-Host "Removing existing Edge local folder" -ForegroundColor Yellow
     Remove-Item -Path $edgeLocalPath -Recurse -Force
 }
 
@@ -77,7 +74,6 @@ if (Test-Path $edgeLocalPath) {
 New-Item -ItemType Directory -Path $edgeLocalPath -Force | Out-Null
 
 # Copy EVERYTHING from OneDrive to local Edge folder
-Write-Host "Copying Edge data from OneDrive to local AppData" -ForegroundColor Cyan
 Copy-Item `
     -Path (Join-Path $edgeOneDrivePath '*') `
     -Destination $edgeLocalPath `
