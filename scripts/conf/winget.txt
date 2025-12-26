@@ -1,6 +1,6 @@
-#########
+#############################
 # MAIN
-#########
+#############################
 Git.Git
 Microsoft.OneDrive
 WireGuard.WireGuard
@@ -18,17 +18,17 @@ Mega.MEGASync
 Proton.ProtonVPN
 Microsoft.WSL
 DEVCOM.JetBrainsMonoNerdFont
+AntibodySoftware.WizTree
 
-#########
+#############################
 # STUFF
-#########
+#############################
 # MiKTeX.MiKTeX
 # StrawberryPerl.StrawberryPerl
 
-
-#########
+#############################
 # GAMES
-#########
+#############################
 Microsoft.GameInput
 MoonlightGameStreamingProject.Moonlight
 Valve.Steam

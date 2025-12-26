@@ -22,8 +22,7 @@ git clone https://github.com/xWildhagen/Windows
 1. Windows Security
 2. Log in to OneDrive
 3. Attach NAS
-4. Set up browser
-5. Re-arrange taskbar
+4. Re-arrange taskbar
 
 ## Stuff
 

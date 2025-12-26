@@ -1,68 +1,87 @@
 <#
     stuff.ps1
-    - Applies your Windows Terminal config from OneDrive to all local Terminal installs
+    - Applies Windows Terminal config from OneDrive
+    - Replaces Edge local folder by COPYING OneDrive contents
 #>
 
 Write-Host "=== stuff.ps1 ===" -ForegroundColor Blue
 
-# ---------------------------
-# Resolve paths
-# ---------------------------
+# ============================================================
+# Resolve home folder
+# ============================================================
 
-# Resolve current user's home folder (C:\Users\<user>)
 $homeFolder = [Environment]::GetFolderPath('UserProfile')
 
-# Base folder in OneDrive where the Terminal config lives
-$terminalConfigDir = Join-Path $homeFolder 'OneDrive - Wildhagen\MAIN\TERMINAL'
+# ============================================================
+# Windows Terminal config
+# ============================================================
 
-# Name of the config file in OneDrive (your custom file)
+$terminalConfigDir        = Join-Path $homeFolder 'OneDrive - Wildhagen\MAIN\TERMINAL'
 $terminalConfigSourceFile = 'TERMINAL.json'
-
-# Destination file name that Windows Terminal actually uses
 $terminalConfigTargetFile = 'settings.json'
-
-# Full path to your saved Terminal config in OneDrive
-$terminalConfigPath = Join-Path $terminalConfigDir $terminalConfigSourceFile
+$terminalConfigPath       = Join-Path $terminalConfigDir $terminalConfigSourceFile
 
 if (-not (Test-Path $terminalConfigPath)) {
     Write-Warning "Terminal config not found at: $terminalConfigPath"
-    return
 }
+else {
+    $packagesRoot = Join-Path $env:LOCALAPPDATA 'Packages'
 
-# ---------------------------
-# Locate Windows Terminal packages
-# ---------------------------
-
-# Windows Terminal package folders (Store / winget install)
-$packagesRoot      = Join-Path $env:LOCALAPPDATA 'Packages'
-$terminalPackages  = @()
-
-if (Test-Path $packagesRoot) {
     $terminalPackages = Get-ChildItem -Path $packagesRoot -Directory -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -like 'Microsoft.WindowsTerminal*' }
+
+    if (-not $terminalPackages) {
+        Write-Warning "No Windows Terminal package folder found"
+    }
+    else {
+        foreach ($pkg in $terminalPackages) {
+            $localState = Join-Path $pkg.FullName 'LocalState'
+
+            if (-not (Test-Path $localState)) {
+                New-Item -ItemType Directory -Path $localState -Force | Out-Null
+            }
+
+            $targetSettings = Join-Path $localState $terminalConfigTargetFile
+            Copy-Item -Path $terminalConfigPath -Destination $targetSettings -Force
+
+            Write-Host "Applied terminal config to $targetSettings" -ForegroundColor Green
+        }
+    }
 }
 
-if (-not $terminalPackages) {
-    Write-Warning "No Windows Terminal package folder found under $packagesRoot"
+# ============================================================
+# Microsoft Edge folder COPY (no links, no sync)
+# ============================================================
+
+Write-Host "=== Edge folder copy ===" -ForegroundColor Blue
+
+$edgeLocalPath    = Join-Path $homeFolder 'AppData\Local\Microsoft\Edge'
+$edgeOneDrivePath = Join-Path $homeFolder 'OneDrive - Wildhagen\MAIN\EDGE\Edge'
+
+# Ensure Edge is not running
+Get-Process msedge -ErrorAction SilentlyContinue | Stop-Process -Force
+
+# Verify OneDrive source exists
+if (-not (Test-Path $edgeOneDrivePath)) {
+    Write-Warning "OneDrive Edge source not found: $edgeOneDrivePath"
     return
 }
 
-# ---------------------------
-# Apply config to each package
-# ---------------------------
-
-foreach ($pkg in $terminalPackages) {
-    $localState = Join-Path $pkg.FullName 'LocalState'
-
-    # Ensure LocalState exists (Terminal may not have been run yet)
-    if (-not (Test-Path $localState)) {
-        New-Item -ItemType Directory -Path $localState -Force | Out-Null
-    }
-
-    $targetSettings = Join-Path $localState $terminalConfigTargetFile
-
-    # Replace with your OneDrive version
-    Copy-Item -Path $terminalConfigPath -Destination $targetSettings -Force
-
-    Write-Host "Applied terminal config to $targetSettings" -ForegroundColor Green
+# Remove existing local Edge folder completely
+if (Test-Path $edgeLocalPath) {
+    Write-Host "Removing existing Edge local folder" -ForegroundColor Yellow
+    Remove-Item -Path $edgeLocalPath -Recurse -Force
 }
+
+# Recreate local Edge folder
+New-Item -ItemType Directory -Path $edgeLocalPath -Force | Out-Null
+
+# Copy EVERYTHING from OneDrive to local Edge folder
+Write-Host "Copying Edge data from OneDrive to local AppData" -ForegroundColor Cyan
+Copy-Item `
+    -Path (Join-Path $edgeOneDrivePath '*') `
+    -Destination $edgeLocalPath `
+    -Recurse `
+    -Force
+
+Write-Host "Edge folder successfully replaced via copy" -ForegroundColor Green
