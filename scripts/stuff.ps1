@@ -44,7 +44,7 @@ else {
             $targetSettings = Join-Path $localState $terminalConfigTargetFile
             Copy-Item -Path $terminalConfigPath -Destination $targetSettings -Force
 
-            Write-Host "Applied terminal config to $targetSettings" -ForegroundColor Green
+            Write-Host "Applied terminal config" -ForegroundColor Green
         }
     }
 }
