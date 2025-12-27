@@ -2,6 +2,8 @@
     stuff.ps1
     - Applies Windows Terminal config from OneDrive
     - Replaces Edge local folder by COPYING OneDrive contents
+    - Copies SSH files from OneDrive to local .ssh
+    - Copies .gitconfig from OneDrive to local home
     - Menu-driven: run each section individually, or run all
 #>
 
@@ -38,9 +40,21 @@ $terminalConfigPath       = Join-Path $terminalConfigDir $terminalConfigSourceFi
 $edgeLocalPath    = Join-Path $homeFolder 'AppData\Local\Microsoft\Edge'
 $edgeOneDrivePath = Join-Path $homeFolder 'OneDrive - Wildhagen\MAIN\EDGE\Edge'
 
+# OpenSSH
+$sshOneDrivePath = Join-Path $homeFolder 'OneDrive - Wildhagen\MAIN\SSH'
+$sshLocalPath    = Join-Path $homeFolder '.ssh'
+
+# Git
+$gitConfigOneDrivePath = Join-Path $homeFolder 'OneDrive - Wildhagen\MAIN\GIT\.gitconfig'
+$gitConfigLocalPath    = Join-Path $homeFolder '.gitconfig'
+
 Write-Host "Terminal config:  $terminalConfigPath"
 Write-Host "Edge source:      $edgeOneDrivePath"
 Write-Host "Edge destination: $edgeLocalPath"
+Write-Host "SSH source:       $sshOneDrivePath"
+Write-Host "SSH destination:  $sshLocalPath"
+Write-Host "Git config src:   $gitConfigOneDrivePath"
+Write-Host "Git config dst:   $gitConfigLocalPath"
 
 # =====================================================================
 # 1) Windows Terminal config
@@ -82,7 +96,6 @@ function Apply-WindowsTerminalConfig {
 function Replace-EdgeLocalFolderFromOneDrive {
     Write-Section "Microsoft Edge: replace local folder via copy"
 
-    # Ensure Edge is not running
     try {
         Get-Process msedge -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     }
@@ -95,21 +108,18 @@ function Replace-EdgeLocalFolderFromOneDrive {
         return
     }
 
-    # Remove existing local Edge folder completely
     if (Test-Path -LiteralPath $script:edgeLocalPath) {
         try {
             Remove-Item -LiteralPath $script:edgeLocalPath -Recurse -Force
         }
         catch {
-            Write-Warning "Failed to remove local Edge folder: $($_). Make sure Edge is closed and try again."
+            Write-Warning "Failed to remove local Edge folder: $($_)"
             return
         }
     }
 
-    # Recreate local Edge folder
     New-Item -ItemType Directory -Path $script:edgeLocalPath -Force | Out-Null
 
-    # Copy EVERYTHING from OneDrive to local Edge folder
     Copy-Item `
         -Path (Join-Path $script:edgeOneDrivePath '*') `
         -Destination $script:edgeLocalPath `
@@ -120,11 +130,65 @@ function Replace-EdgeLocalFolderFromOneDrive {
 }
 
 # =====================================================================
+# 3) SSH folder copy (OneDrive -> Local .ssh)
+# =====================================================================
+function Copy-SSHFromOneDrive {
+    Write-Section "OpenSSH: copy .ssh from OneDrive"
+
+    if (-not (Test-Path -LiteralPath $script:sshOneDrivePath)) {
+        Write-Warning "OneDrive SSH source not found: $($script:sshOneDrivePath)"
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $script:sshLocalPath)) {
+        New-Item -ItemType Directory -Path $script:sshLocalPath -Force | Out-Null
+    }
+
+    Copy-Item `
+        -Path (Join-Path $script:sshOneDrivePath '*') `
+        -Destination $script:sshLocalPath `
+        -Recurse `
+        -Force
+
+    try {
+        icacls $script:sshLocalPath /inheritance:r | Out-Null
+        icacls $script:sshLocalPath /grant:r "$env:USERNAME:(OI)(CI)F" | Out-Null
+        icacls $script:sshLocalPath /remove "Users" "Authenticated Users" "Everyone" 2>$null | Out-Null
+    }
+    catch {
+        Write-Warning "Could not adjust .ssh permissions: $_"
+    }
+
+    Write-Host ".ssh successfully copied from OneDrive" -ForegroundColor Green
+}
+
+# =====================================================================
+# 4) Git config copy (OneDrive -> Local .gitconfig)
+# =====================================================================
+function Copy-GitConfigFromOneDrive {
+    Write-Section "Git: copy .gitconfig from OneDrive"
+
+    if (-not (Test-Path -LiteralPath $script:gitConfigOneDrivePath)) {
+        Write-Warning "OneDrive .gitconfig not found: $($script:gitConfigOneDrivePath)"
+        return
+    }
+
+    Copy-Item `
+        -LiteralPath $script:gitConfigOneDrivePath `
+        -Destination $script:gitConfigLocalPath `
+        -Force
+
+    Write-Host ".gitconfig successfully copied from OneDrive" -ForegroundColor Green
+}
+
+# =====================================================================
 # Run All
 # =====================================================================
 function Invoke-All {
     Apply-WindowsTerminalConfig
     Replace-EdgeLocalFolderFromOneDrive
+    Copy-SSHFromOneDrive
+    Copy-GitConfigFromOneDrive
 }
 
 # =====================================================================
@@ -135,6 +199,8 @@ function Show-Menu {
     Write-Host "==== STUFF MENU ====" -ForegroundColor Blue
     Write-Host " 1) Apply Windows Terminal config"
     Write-Host " 2) Replace Edge local folder (copy from OneDrive)"
+    Write-Host " 3) Copy SSH folder (.ssh) from OneDrive"
+    Write-Host " 4) Copy Git config (.gitconfig) from OneDrive"
     Write-Host " A) Run ALL" -ForegroundColor Blue
     Write-Host ""
 }
@@ -145,9 +211,11 @@ while ($true) {
     $choice = Read-Host
 
     switch -Regex ($choice) {
-        '^\s*1\s*$'   { Apply-WindowsTerminalConfig }
-        '^\s*2\s*$'   { Replace-EdgeLocalFolderFromOneDrive }
-        '^\s*[Aa]\s*$'{ Invoke-All }
-        default       { Write-Host "Invalid option." -ForegroundColor Red }
+        '^\s*1\s*$'    { Apply-WindowsTerminalConfig }
+        '^\s*2\s*$'    { Replace-EdgeLocalFolderFromOneDrive }
+        '^\s*3\s*$'    { Copy-SSHFromOneDrive }
+        '^\s*4\s*$'    { Copy-GitConfigFromOneDrive }
+        '^\s*[Aa]\s*$' { Invoke-All }
+        default        { Write-Host "Invalid option." -ForegroundColor Red }
     }
 }
