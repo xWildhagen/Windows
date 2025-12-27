@@ -41,7 +41,6 @@ $edgeOneDrivePath = Join-Path $homeFolder 'OneDrive - Wildhagen\MAIN\EDGE\Edge'
 Write-Host "Terminal config:  $terminalConfigPath"
 Write-Host "Edge source:      $edgeOneDrivePath"
 Write-Host "Edge destination: $edgeLocalPath"
-Write-Host ""
 
 # =====================================================================
 # 1) Windows Terminal config
@@ -73,7 +72,7 @@ function Apply-WindowsTerminalConfig {
         $targetSettings = Join-Path $localState $script:terminalConfigTargetFile
         Copy-Item -LiteralPath $script:terminalConfigPath -Destination $targetSettings -Force
 
-        Write-Host "Applied terminal config -> $targetSettings" -ForegroundColor Green
+        Write-Host "Applied terminal config" -ForegroundColor Green
     }
 }
 
