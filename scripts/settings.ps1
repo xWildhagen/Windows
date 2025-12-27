@@ -506,9 +506,9 @@ function Show-Menu {
     Write-Host " 9) Account picture (Admin)"
     Write-Host "10) Date & time (TZ Admin, formats user)"
     Write-Host "11) Typing suggestions"
-    Write-Host " A) Run ALL"
-    Write-Host " R) Prompt reboot/logoff"
-    Write-Host " Q) Quit"
+    Write-Host " A) Run ALL" -ForegroundColor Blue
+    Write-Host " R) Prompt reboot/logoff" -ForegroundColor Blue
+    Write-Host " Q) Quit" -ForegroundColor Blue
     Write-Host ""
 }
 
