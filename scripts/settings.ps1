@@ -24,7 +24,7 @@ $IsAdmin = Test-IsAdmin
 
 function Write-Section($Title) {
     Write-Host ""
-    Write-Host "== $Title ==" -ForegroundColor Cyan
+    Write-Host "== $Title ==" -ForegroundColor Blue
 }
 
 # ---------------------------
@@ -61,7 +61,7 @@ function Set-DisplayScaling100 {
     New-ItemProperty -Path $desktopKey -Name 'Win8DpiScaling' -PropertyType DWord -Value 1         -Force | Out-Null
     New-ItemProperty -Path $desktopKey -Name 'LogPixels'      -PropertyType DWord -Value $dpiValue -Force | Out-Null
 
-    Write-Host "System > Display > Scale set." -ForegroundColor Blue
+    Write-Host "System > Display > Scale set." -ForegroundColor Green
 }
 
 # =====================================================================
@@ -90,7 +90,7 @@ function Set-PowerTimeouts {
         Write-Warning "One or more powercfg commands may have failed. Try running this script in an elevated PowerShell session."
     }
     else {
-        Write-Host "System > Power & battery > Screen, sleep & hibernate time-outs set." -ForegroundColor Blue
+        Write-Host "System > Power & battery > Screen, sleep & hibernate time-outs set." -ForegroundColor Green
     }
 }
 
@@ -107,7 +107,7 @@ function Set-EnergySaverThreshold {
         Write-Warning "Failed to configure Energy Saver threshold (code $esThresholdExitCode). Try running this script as Administrator."
     }
     else {
-        Write-Host "System > Power & battery > Energy saver set." -ForegroundColor Blue
+        Write-Host "System > Power & battery > Energy saver set." -ForegroundColor Green
     }
 }
 
@@ -127,7 +127,7 @@ function Set-ClipboardSettings {
     New-ItemProperty -Path $clipboardKey -Name 'EnableCloudClipboard'              -PropertyType DWord -Value 1 -Force | Out-Null
     New-ItemProperty -Path $clipboardKey -Name 'CloudClipboardAutomaticUpload'     -PropertyType DWord -Value 1 -Force | Out-Null
 
-    Write-Host "System > Clipboard set." -ForegroundColor Blue
+    Write-Host "System > Clipboard set." -ForegroundColor Green
 
     # If admin, remove policies that might block it
     if ($script:IsAdmin) {
@@ -178,9 +178,9 @@ function Enable-WindowsFeatures {
         try {
             $result = Enable-WindowsOptionalFeature -Online -FeatureName $feature -All -NoRestart -ErrorAction Stop
             if ($result.RestartNeeded) {
-                Write-Host "$feature enabled (restart required)." -ForegroundColor Blue
+                Write-Host "$feature enabled (restart required)." -ForegroundColor Green
             } else {
-                Write-Host "$feature enabled." -ForegroundColor Blue
+                Write-Host "$feature enabled." -ForegroundColor Green
             }
         }
         catch {
@@ -229,7 +229,7 @@ public class WallpaperHelper
     }
 
     [WallpaperHelper]::SetWallpaper($Path)
-    Write-Host "Personalisation > Background set." -ForegroundColor Blue
+    Write-Host "Personalisation > Background set." -ForegroundColor Green
 }
 
 function Apply-Wallpaper {
@@ -289,7 +289,7 @@ function Set-LockScreenImage {
     New-ItemProperty -Path $cspKey -Name 'LockScreenImagePath'   -PropertyType String -Value $targetPath -Force | Out-Null
     New-ItemProperty -Path $cspKey -Name 'LockScreenImageUrl'    -PropertyType String -Value $targetPath -Force | Out-Null
 
-    Write-Host "Personalisation > Lock screen set." -ForegroundColor Blue
+    Write-Host "Personalisation > Lock screen set." -ForegroundColor Green
 }
 
 function Apply-LockScreen {
@@ -314,7 +314,7 @@ function Set-StartMenuSettings {
     New-ItemProperty -Path $explorerAdvancedKey -Name 'Start_IrisRecommendations' -PropertyType DWord -Value 0 -Force | Out-Null
     New-ItemProperty -Path $explorerAdvancedKey -Name 'Start_AccountNotifications'-PropertyType DWord -Value 0 -Force | Out-Null
 
-    Write-Host "Personalisation > Start set." -ForegroundColor Blue
+    Write-Host "Personalisation > Start set." -ForegroundColor Green
 }
 
 # =====================================================================
@@ -380,7 +380,7 @@ function Set-CustomAccountPicture {
         New-ItemProperty -Path $regKey -Name $valueName -PropertyType String -Value $valuePath -Force | Out-Null
     }
 
-    Write-Host "Accounts > Your info set." -ForegroundColor Blue
+    Write-Host "Accounts > Your info set." -ForegroundColor Green
 }
 
 function Apply-AccountPicture {
@@ -423,7 +423,7 @@ function Set-DateTimeSettings {
 
     New-ItemProperty -Path $clockAdvancedKey -Name 'ShowSecondsInSystemClock' -PropertyType DWord -Value 1 -Force | Out-Null
 
-    Write-Host "Time & language > Date & time set." -ForegroundColor Blue
+    Write-Host "Time & language > Date & time set." -ForegroundColor Green
 }
 
 # =====================================================================
@@ -438,7 +438,7 @@ function Set-TypingSettings {
     New-ItemProperty -Path $inputSettingsKey -Name 'EnableHwkbTextPrediction' -PropertyType DWord -Value 1 -Force | Out-Null
     New-ItemProperty -Path $inputSettingsKey -Name 'MultilingualEnabled'      -PropertyType DWord -Value 1 -Force | Out-Null
 
-    Write-Host "Time & language > Typing set." -ForegroundColor Blue
+    Write-Host "Time & language > Typing set." -ForegroundColor Green
 }
 
 # =====================================================================
@@ -506,7 +506,6 @@ function Show-Menu {
     Write-Host " 9) Account picture (Admin)"
     Write-Host "10) Date & time (TZ Admin, formats user)"
     Write-Host "11) Typing suggestions"
-    Write-Host ""
     Write-Host " A) Run ALL"
     Write-Host " R) Prompt reboot/logoff"
     Write-Host " Q) Quit"
