@@ -495,7 +495,7 @@ function Prompt-RebootOrLogoff {
 # =====================================================================
 function Show-Menu {
     Write-Host ""
-    Write-Host "==== SETTINGS MENU ====" -ForegroundColor Yellow
+    Write-Host "==== SETTINGS MENU ====" -ForegroundColor Cyan
     Write-Host " 1) Display: 100% scaling"
     Write-Host " 2) Power: screen off & sleep"
     Write-Host " 3) Energy saver: threshold"
@@ -516,7 +516,7 @@ function Show-Menu {
 
 while ($true) {
     Show-Menu
-    Write-Host "Select an option: " -ForegroundColor Yellow -NoNewLine
+    Write-Host "Select an option: " -ForegroundColor Magenta -NoNewLine
     $choice = Read-Host
 
     switch -Regex ($choice) {
