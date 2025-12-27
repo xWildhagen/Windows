@@ -508,7 +508,6 @@ function Show-Menu {
     Write-Host "11) Typing suggestions"
     Write-Host " A) Run ALL" -ForegroundColor Blue
     Write-Host " R) Prompt reboot/logoff" -ForegroundColor Blue
-    Write-Host " Q) Quit" -ForegroundColor Blue
     Write-Host ""
 }
 
@@ -534,7 +533,6 @@ while ($true) {
             Prompt-RebootOrLogoff
         }
         '^\s*[Rr]\s*$' { Prompt-RebootOrLogoff }
-        '^\s*[Qq]\s*$' { break }
         default { Write-Host "Invalid option." -ForegroundColor Red }
     }
 }
