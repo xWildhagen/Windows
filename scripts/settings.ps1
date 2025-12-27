@@ -494,7 +494,6 @@ function Prompt-RebootOrLogoff {
 # MENU
 # =====================================================================
 function Show-Menu {
-    Write-Host ""
     Write-Host "==== SETTINGS MENU ====" -ForegroundColor Blue
     Write-Host " 1) Display: 100% scaling" -ForegroundColor Blue
     Write-Host " 2) Power: screen off & sleep" -ForegroundColor Blue
