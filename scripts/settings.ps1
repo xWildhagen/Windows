@@ -1,6 +1,7 @@
 <#
     settings.ps1
     - Applies setting adjustments to Windows
+    - Menu-driven: run each section individually, or run all
 #>
 
 [CmdletBinding()]
@@ -8,10 +9,23 @@ param()
 
 $ErrorActionPreference = 'Stop'
 
-# ---------------------------
-# Header
-# ---------------------------
 Write-Host "=== settings.ps1 ===" -ForegroundColor Blue
+
+# ---------------------------
+# Helpers
+# ---------------------------
+function Test-IsAdmin {
+    return ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+$IsAdmin = Test-IsAdmin
+
+function Write-Section($Title) {
+    Write-Host ""
+    Write-Host "== $Title ==" -ForegroundColor Cyan
+}
 
 # ---------------------------
 # Paths (HOME_FOLDER\Windows)
@@ -21,192 +35,152 @@ $repoRoot     = Join-Path $homeFolder 'Windows'
 $assetsRoot   = Join-Path $repoRoot 'assets'
 
 $wallpaperPath  = Join-Path $assetsRoot 'aurora.png'       # Desktop wallpaper (source)
-$lockScreenPath = Join-Path $assetsRoot 'aurora.png'       # Lock screen image (source, separate var)
+$lockScreenPath = Join-Path $assetsRoot 'aurora.png'       # Lock screen image (source)
 $profilePicPath = Join-Path $assetsRoot 'catppuccin.png'   # Account picture
 
 Write-Host "Repo root:        $repoRoot"
 Write-Host "Wallpaper image:  $wallpaperPath"
 Write-Host "Lock screen:      $lockScreenPath"
 Write-Host "Profile picture:  $profilePicPath"
+Write-Host "Admin:            $IsAdmin"
 Write-Host ""
 
 # =====================================================================
-# DISPLAY: 100% scaling
+# 1) DISPLAY: 100% scaling
 # =====================================================================
+function Set-DisplayScaling100 {
+    Write-Section "Display: 100% scaling"
 
-# 100% scaling corresponds to 96 DPI
-$dpiValue   = 96
-$desktopKey = 'HKCU:\Control Panel\Desktop'
+    $dpiValue   = 96
+    $desktopKey = 'HKCU:\Control Panel\Desktop'
 
-# Ensure the key exists
-if (-not (Test-Path $desktopKey)) {
-    Write-Host "Creating missing key: $desktopKey" -ForegroundColor Blue
-    New-Item -Path $desktopKey -Force | Out-Null
+    if (-not (Test-Path $desktopKey)) {
+        Write-Host "Creating missing key: $desktopKey" -ForegroundColor Blue
+        New-Item -Path $desktopKey -Force | Out-Null
+    }
+
+    New-ItemProperty -Path $desktopKey -Name 'Win8DpiScaling' -PropertyType DWord -Value 1         -Force | Out-Null
+    New-ItemProperty -Path $desktopKey -Name 'LogPixels'      -PropertyType DWord -Value $dpiValue -Force | Out-Null
+
+    Write-Host "System > Display > Scale set." -ForegroundColor Blue
 }
 
-# Enable custom DPI scaling and set it to 100%
-# Win8DpiScaling = 1 → use custom DPI
-# LogPixels      = 96 (decimal) → 100% scaling
-New-ItemProperty -Path $desktopKey -Name 'Win8DpiScaling' -PropertyType DWord -Value 1         -Force | Out-Null
-New-ItemProperty -Path $desktopKey -Name 'LogPixels'      -PropertyType DWord -Value $dpiValue -Force | Out-Null
-
-Write-Host "System > Display > Scale set." -ForegroundColor Blue
-Write-Host ""
-
 # =====================================================================
-# POWER: screen off & sleep time-outs
+# 2) POWER: screen off & sleep time-outs
 # =====================================================================
+function Set-PowerTimeouts {
+    Write-Section "Power: time-outs"
 
-# Plugged in (AC)
-# - Turn screen off after 30 minutes
-# - Sleep after 60 minutes
-powercfg /change monitor-timeout-ac 30     # minutes
-$acMonitorExitCode = $LASTEXITCODE
+    powercfg /change monitor-timeout-ac 30
+    $acMonitorExitCode = $LASTEXITCODE
 
-powercfg /change standby-timeout-ac 60     # minutes
-$acSleepExitCode = $LASTEXITCODE
+    powercfg /change standby-timeout-ac 60
+    $acSleepExitCode = $LASTEXITCODE
 
-# On battery (DC)
-# - Turn screen off after 15 minutes
-# - Sleep after 30 minutes
-powercfg /change monitor-timeout-dc 15     # minutes
-$dcMonitorExitCode = $LASTEXITCODE
+    powercfg /change monitor-timeout-dc 15
+    $dcMonitorExitCode = $LASTEXITCODE
 
-powercfg /change standby-timeout-dc 30     # minutes
-$dcSleepExitCode = $LASTEXITCODE
+    powercfg /change standby-timeout-dc 30
+    $dcSleepExitCode = $LASTEXITCODE
 
-if (    $acMonitorExitCode -ne 0 `
-     -or $acSleepExitCode   -ne 0 `
-     -or $dcMonitorExitCode -ne 0 `
-     -or $dcSleepExitCode   -ne 0) {
+    if (    $acMonitorExitCode -ne 0 `
+         -or $acSleepExitCode   -ne 0 `
+         -or $dcMonitorExitCode -ne 0 `
+         -or $dcSleepExitCode   -ne 0) {
 
-    Write-Warning "One or more powercfg commands may have failed. Try running this script in an elevated PowerShell session."
-}
-else {
-    Write-Host "System > Power & battery > Screen, sleep & hibernate time-outs set." -ForegroundColor Blue
-}
-Write-Host ""
-
-# =====================================================================
-# ENERGY SAVER: automatic threshold
-# =====================================================================
-
-# On battery: turn Energy Saver on automatically at 20%
-powercfg /setdcvalueindex SCHEME_CURRENT SUB_ENERGYSAVER ESBATTTHRESHOLD 20
-$esThresholdExitCode = $LASTEXITCODE
-
-if ($esThresholdExitCode -ne 0) {
-    Write-Warning "Failed to configure Energy Saver threshold (code $esThresholdExitCode). Try running this script as Administrator."
-}
-else {
-    Write-Host "System > Power & battery > Energy saver set." -ForegroundColor Blue
-}
-Write-Host ""
-
-# =====================================================================
-# CLIPBOARD: history + cloud sync
-# =====================================================================
-
-# Per-user clipboard settings (current user)
-$clipboardKey = 'HKCU:\Software\Microsoft\Clipboard'
-
-if (-not (Test-Path $clipboardKey)) {
-    New-Item -Path $clipboardKey -Force | Out-Null
+        Write-Warning "One or more powercfg commands may have failed. Try running this script in an elevated PowerShell session."
+    }
+    else {
+        Write-Host "System > Power & battery > Screen, sleep & hibernate time-outs set." -ForegroundColor Blue
+    }
 }
 
-# Turn ON Clipboard history
-New-ItemProperty -Path $clipboardKey `
-                 -Name 'EnableClipboardHistory' `
-                 -PropertyType DWord `
-                 -Value 1 `
-                 -Force | Out-Null
+# =====================================================================
+# 3) ENERGY SAVER: automatic threshold
+# =====================================================================
+function Set-EnergySaverThreshold {
+    Write-Section "Energy Saver: threshold"
 
-# Turn ON cloud clipboard + auto sync across devices
-New-ItemProperty -Path $clipboardKey `
-                 -Name 'EnableCloudClipboard' `
-                 -PropertyType DWord `
-                 -Value 1 `
-                 -Force | Out-Null
+    powercfg /setdcvalueindex SCHEME_CURRENT SUB_ENERGYSAVER ESBATTTHRESHOLD 20
+    $esThresholdExitCode = $LASTEXITCODE
 
-# 1 = auto sync, 0 = manual sync
-New-ItemProperty -Path $clipboardKey `
-                 -Name 'CloudClipboardAutomaticUpload' `
-                 -PropertyType DWord `
-                 -Value 1 `
-                 -Force | Out-Null
+    if ($esThresholdExitCode -ne 0) {
+        Write-Warning "Failed to configure Energy Saver threshold (code $esThresholdExitCode). Try running this script as Administrator."
+    }
+    else {
+        Write-Host "System > Power & battery > Energy saver set." -ForegroundColor Blue
+    }
+}
 
-Write-Host "System > Clipboard set." -ForegroundColor Blue
+# =====================================================================
+# 4) CLIPBOARD: history + cloud sync
+# =====================================================================
+function Set-ClipboardSettings {
+    Write-Section "Clipboard: history + cloud sync"
 
-# If running as admin, make sure no policies are BLOCKING clipboard history/sync
-try {
-    $isAdmin = ([Security.Principal.WindowsPrincipal] `
-        [Security.Principal.WindowsIdentity]::GetCurrent()
-    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    $clipboardKey = 'HKCU:\Software\Microsoft\Clipboard'
 
-    if ($isAdmin) {
-        $systemPolicyKey = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System'
+    if (-not (Test-Path $clipboardKey)) {
+        New-Item -Path $clipboardKey -Force | Out-Null
+    }
 
-        if (Test-Path $systemPolicyKey) {
-            foreach ($name in 'AllowClipboardHistory','AllowCrossDeviceClipboard','EnableCloudClipboard','CloudClipboardAutomaticUpload') {
-                try {
+    New-ItemProperty -Path $clipboardKey -Name 'EnableClipboardHistory'            -PropertyType DWord -Value 1 -Force | Out-Null
+    New-ItemProperty -Path $clipboardKey -Name 'EnableCloudClipboard'              -PropertyType DWord -Value 1 -Force | Out-Null
+    New-ItemProperty -Path $clipboardKey -Name 'CloudClipboardAutomaticUpload'     -PropertyType DWord -Value 1 -Force | Out-Null
+
+    Write-Host "System > Clipboard set." -ForegroundColor Blue
+
+    # If admin, remove policies that might block it
+    if ($script:IsAdmin) {
+        try {
+            $systemPolicyKey = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System'
+            if (Test-Path $systemPolicyKey) {
+                foreach ($name in 'AllowClipboardHistory','AllowCrossDeviceClipboard','EnableCloudClipboard','CloudClipboardAutomaticUpload') {
                     Remove-ItemProperty -Path $systemPolicyKey -Name $name -ErrorAction SilentlyContinue
-                }
-                catch {
-                    # ignore if value doesn't exist / cannot be removed
                 }
             }
         }
+        catch {
+            Write-Warning "Failed to adjust clipboard policy keys: $_"
+        }
+    }
+
+    # Make sure Clipboard User Service is running
+    try {
+        Get-Service -Name 'cbdhsvc*' -ErrorAction SilentlyContinue |
+            Where-Object { $_.Status -ne 'Running' } |
+            Start-Service
+    }
+    catch {
+        Write-Warning "Failed to start Clipboard User Service: $_"
     }
 }
-catch {
-    Write-Warning "Failed to adjust clipboard policy keys: $_"
-}
-
-# Make sure Clipboard User Service is running so changes actually apply
-try {
-    Get-Service -Name 'cbdhsvc*' -ErrorAction SilentlyContinue |
-        Where-Object { $_.Status -ne 'Running' } |
-        Start-Service
-}
-catch {
-    Write-Warning "Failed to start Clipboard User Service: $_"
-}
-Write-Host ""
 
 # =====================================================================
-# WINDOWS OPTIONAL FEATURES
-# Hyper-V, VM Platform, WHP, Sandbox, WSL
+# 5) WINDOWS OPTIONAL FEATURES
 # =====================================================================
+function Enable-WindowsFeatures {
+    Write-Section "Windows Optional Features: Hyper-V, WSL, Sandbox"
 
-$features = @(
-    'Microsoft-Hyper-V',                 # Hyper-V
-    'VirtualMachinePlatform',            # Virtual Machine Platform
-    'HypervisorPlatform',                # Windows Hypervisor Platform
-    'Containers-DisposableClientVM',     # Windows Sandbox
-    'Microsoft-Windows-Subsystem-Linux'  # Windows Subsystem for Linux (WSL)
-)
+    $features = @(
+        'Microsoft-Hyper-V',
+        'VirtualMachinePlatform',
+        'HypervisorPlatform',
+        'Containers-DisposableClientVM',
+        'Microsoft-Windows-Subsystem-Linux'
+    )
 
-$isAdmin = ([Security.Principal.WindowsPrincipal] `
-    [Security.Principal.WindowsIdentity]::GetCurrent()
-).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $script:IsAdmin) {
+        Write-Warning "Skipping Windows optional features: run settings.ps1 as Administrator to enable Hyper-V, WSL, Sandbox, etc."
+        return
+    }
 
-if (-not $isAdmin) {
-    Write-Warning "Skipping Windows optional features: run settings.ps1 as Administrator to enable Hyper-V, WSL, Sandbox, etc."
-}
-else {
     foreach ($feature in $features) {
         try {
-            $result = Enable-WindowsOptionalFeature `
-                -Online `
-                -FeatureName $feature `
-                -All `
-                -NoRestart `
-                -ErrorAction Stop
-
+            $result = Enable-WindowsOptionalFeature -Online -FeatureName $feature -All -NoRestart -ErrorAction Stop
             if ($result.RestartNeeded) {
                 Write-Host "$feature enabled (restart required)." -ForegroundColor Blue
-            }
-            else {
+            } else {
                 Write-Host "$feature enabled." -ForegroundColor Blue
             }
         }
@@ -215,28 +189,21 @@ else {
         }
     }
 }
-Write-Host ""
 
 # =====================================================================
-# WALLPAPER (current user)
+# 6) WALLPAPER (current user)
 # =====================================================================
-
 function Set-CustomWallpaper {
     [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$Path
-    )
+    param([Parameter(Mandatory)][string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path)) {
         Write-Warning "Wallpaper file not found: $Path"
         return
     }
 
-    # Update registry so Windows knows about the image
     Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name 'Wallpaper' -Value $Path
 
-    # Use user32.dll SystemParametersInfo to apply it immediately
     $src = @'
 using System;
 using System.Runtime.InteropServices;
@@ -266,41 +233,29 @@ public class WallpaperHelper
     Write-Host "Personalisation > Background set." -ForegroundColor Blue
 }
 
-try {
-    Set-CustomWallpaper -Path $wallpaperPath
+function Apply-Wallpaper {
+    Write-Section "Wallpaper"
+    try { Set-CustomWallpaper -Path $script:wallpaperPath }
+    catch { Write-Warning "Failed to set wallpaper: $_" }
 }
-catch {
-    Write-Warning "Failed to set wallpaper: $_"
-}
-Write-Host ""
 
 # =====================================================================
-# LOCK SCREEN (policy + CSP, all users)
+# 7) LOCK SCREEN (policy + CSP, all users)
 # =====================================================================
-
 function Set-LockScreenImage {
     [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$Path
-    )
+    param([Parameter(Mandatory)][string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path)) {
         Write-Warning "Lock screen image file not found: $Path"
         return
     }
 
-    # This writes to HKLM, so it must be run elevated.
-    $isAdmin = ([Security.Principal.WindowsPrincipal] `
-        [Security.Principal.WindowsIdentity]::GetCurrent()
-    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-    if (-not $isAdmin) {
+    if (-not $script:IsAdmin) {
         Write-Warning "Skipping lock screen: settings.ps1 must be run as Administrator to change it."
         return
     }
 
-    # Convert/copy the source image to a machine-wide JPG so system can always read it
     $lockDestRoot = Join-Path $env:ProgramData 'WindowsLockScreen'
     if (-not (Test-Path $lockDestRoot)) {
         New-Item -Path $lockDestRoot -ItemType Directory -Force | Out-Null
@@ -310,38 +265,26 @@ function Set-LockScreenImage {
 
     try {
         Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
-
         $srcImage = [System.Drawing.Image]::FromFile($Path)
-        try {
-            $srcImage.Save($lockDestFile, [System.Drawing.Imaging.ImageFormat]::Jpeg)
-        }
-        finally {
-            $srcImage.Dispose()
-        }
+        try { $srcImage.Save($lockDestFile, [System.Drawing.Imaging.ImageFormat]::Jpeg) }
+        finally { $srcImage.Dispose() }
     }
     catch {
-        # If conversion fails for some reason, fall back to just copying the file
         Copy-Item -LiteralPath $Path -Destination $lockDestFile -Force
     }
 
     $targetPath = $lockDestFile
 
-    # 1) Group Policy-style key
     $personalizationKey = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization'
-    if (-not (Test-Path $personalizationKey)) {
-        New-Item -Path $personalizationKey -Force | Out-Null
-    }
+    if (-not (Test-Path $personalizationKey)) { New-Item -Path $personalizationKey -Force | Out-Null }
 
     New-ItemProperty -Path $personalizationKey -Name 'LockScreenImage'            -PropertyType String -Value $targetPath -Force | Out-Null
     New-ItemProperty -Path $personalizationKey -Name 'NoLockScreenSlideshow'      -PropertyType DWord  -Value 1          -Force | Out-Null
     New-ItemProperty -Path $personalizationKey -Name 'NoChangingLockScreen'       -PropertyType DWord  -Value 1          -Force | Out-Null
     New-ItemProperty -Path $personalizationKey -Name 'LockScreenOverlaysDisabled' -PropertyType DWord  -Value 1          -Force | Out-Null
 
-    # 2) PersonalizationCSP keys (used by newer builds / MDM)
     $cspKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP'
-    if (-not (Test-Path $cspKey)) {
-        New-Item -Path $cspKey -Force | Out-Null
-    }
+    if (-not (Test-Path $cspKey)) { New-Item -Path $cspKey -Force | Out-Null }
 
     New-ItemProperty -Path $cspKey -Name 'LockScreenImageStatus' -PropertyType DWord  -Value 1           -Force | Out-Null
     New-ItemProperty -Path $cspKey -Name 'LockScreenImagePath'   -PropertyType String -Value $targetPath -Force | Out-Null
@@ -350,91 +293,50 @@ function Set-LockScreenImage {
     Write-Host "Personalisation > Lock screen set." -ForegroundColor Blue
 }
 
-try {
-    Set-LockScreenImage -Path $lockScreenPath
-}
-catch {
-    Write-Warning "Failed to set lock screen image: $_"
-}
-Write-Host ""
-
-# =====================================================================
-# START MENU: layout & toggles
-# =====================================================================
-
-$explorerAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
-$startKey            = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Start'
-
-# Make sure the Start key exists for the per-user Start settings
-if (-not (Test-Path $startKey)) {
-    New-Item -Path $startKey -Force | Out-Null
+function Apply-LockScreen {
+    Write-Section "Lock screen"
+    try { Set-LockScreenImage -Path $script:lockScreenPath }
+    catch { Write-Warning "Failed to set lock screen image: $_" }
 }
 
-# Layout: "More pins"
-# Start_Layout: 0 = Default, 1 = More Pins, 2 = More Recommendations
-New-ItemProperty -Path $explorerAdvancedKey `
-                 -Name 'Start_Layout' `
-                 -PropertyType DWord `
-                 -Value 1 `
-                 -Force | Out-Null
+# =====================================================================
+# 8) START MENU: layout & toggles
+# =====================================================================
+function Set-StartMenuSettings {
+    Write-Section "Start menu"
 
-# Start > Show recommended files in Start, recent files in File Explorer, and items in Jump Lists: OFF
-# Start_TrackDocs: 1 = on (default), 0 = off
-New-ItemProperty -Path $explorerAdvancedKey `
-                 -Name 'Start_TrackDocs' `
-                 -PropertyType DWord `
-                 -Value 0 `
-                 -Force | Out-Null
+    $explorerAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+    $startKey            = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Start'
 
-# Start > Show recommendations for tips, shortcuts, new apps, and more: OFF
-# Start_IrisRecommendations: 1 = on (default), 0 = off
-New-ItemProperty -Path $explorerAdvancedKey `
-                 -Name 'Start_IrisRecommendations' `
-                 -PropertyType DWord `
-                 -Value 0 `
-                 -Force | Out-Null
+    if (-not (Test-Path $startKey)) { New-Item -Path $startKey -Force | Out-Null }
 
-# Start > Show account-related notifications: OFF
-# Start_AccountNotifications: 1 = on (default), 0 = off
-New-ItemProperty -Path $explorerAdvancedKey `
-                 -Name 'Start_AccountNotifications' `
-                 -PropertyType DWord `
-                 -Value 0 `
-                 -Force | Out-Null
+    New-ItemProperty -Path $explorerAdvancedKey -Name 'Start_Layout'              -PropertyType DWord -Value 1 -Force | Out-Null
+    New-ItemProperty -Path $explorerAdvancedKey -Name 'Start_TrackDocs'           -PropertyType DWord -Value 0 -Force | Out-Null
+    New-ItemProperty -Path $explorerAdvancedKey -Name 'Start_IrisRecommendations' -PropertyType DWord -Value 0 -Force | Out-Null
+    New-ItemProperty -Path $explorerAdvancedKey -Name 'Start_AccountNotifications'-PropertyType DWord -Value 0 -Force | Out-Null
 
-Write-Host "Personalisation > Start set." -ForegroundColor Blue
-Write-Host ""
+    Write-Host "Personalisation > Start set." -ForegroundColor Blue
+}
 
 # =====================================================================
-# ACCOUNT PICTURE (profile)
+# 9) ACCOUNT PICTURE (profile)
 # =====================================================================
-
 function Set-CustomAccountPicture {
     [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$Path
-    )
+    param([Parameter(Mandatory)][string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path)) {
         Write-Warning "Profile picture file not found: $Path"
         return
     }
 
-    # This part writes to HKLM, so it needs an elevated session.
-    $isAdmin = ([Security.Principal.WindowsPrincipal] `
-        [Security.Principal.WindowsIdentity]::GetCurrent()
-    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-    if (-not $isAdmin) {
+    if (-not $script:IsAdmin) {
         Write-Warning "Skipping profile picture: settings.ps1 must be run as Administrator to change it."
         return
     }
 
-    # Current user SID
     $userSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 
-    # Folder used by Windows for account pictures: %PUBLIC%\AccountPictures\<SID>
     $accountPicturesRoot = Join-Path $env:PUBLIC 'AccountPictures'
     $userPicturesDir     = Join-Path $accountPicturesRoot $userSid
 
@@ -443,7 +345,6 @@ function Set-CustomAccountPicture {
     }
     New-Item -Path $userPicturesDir -ItemType Directory -Force | Out-Null
 
-    # Create multiple sizes from the source PNG – Windows expects several ImageXX entries.
     Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
 
     $sizes       = @(32, 40, 48, 96, 192, 240, 448)
@@ -461,153 +362,181 @@ function Set-CustomAccountPicture {
                 $graphics.SmoothingMode      = 'HighQuality'
                 $graphics.PixelOffsetMode    = 'HighQuality'
                 $graphics.CompositingQuality = 'HighQuality'
-
                 $graphics.DrawImage($sourceImage, 0, 0, $size, $size)
             }
-            finally {
-                $graphics.Dispose()
-            }
+            finally { $graphics.Dispose() }
 
             $bmp.Save($destFile, [System.Drawing.Imaging.ImageFormat]::Png)
             $bmp.Dispose()
         }
     }
-    finally {
-        $sourceImage.Dispose()
-    }
+    finally { $sourceImage.Dispose() }
 
-    # Point registry to the generated images:
-    # HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\<SID>\ImageXX
     $regKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\$userSid"
-    if (-not (Test-Path $regKey)) {
-        New-Item -Path $regKey -Force | Out-Null
-    }
+    if (-not (Test-Path $regKey)) { New-Item -Path $regKey -Force | Out-Null }
 
     foreach ($size in $sizes) {
         $valueName = "Image{0}" -f $size
         $valuePath = Join-Path $userPicturesDir ("Image{0}.png" -f $size)
-
         New-ItemProperty -Path $regKey -Name $valueName -PropertyType String -Value $valuePath -Force | Out-Null
     }
 
     Write-Host "Accounts > Your info set." -ForegroundColor Blue
 }
 
-try {
-    Set-CustomAccountPicture -Path $profilePicPath
+function Apply-AccountPicture {
+    Write-Section "Account picture"
+    try { Set-CustomAccountPicture -Path $script:profilePicPath }
+    catch { Write-Warning "Failed to set profile picture: $_" }
 }
-catch {
-    Write-Warning "Failed to set profile picture: $_"
-}
-Write-Host ""
 
 # =====================================================================
-# DATE & TIME: time zone & formats
+# 10) DATE & TIME: time zone & formats
 # =====================================================================
+function Set-DateTimeSettings {
+    Write-Section "Date & time"
 
-# System time zone (UTC+1 – W. Europe Standard Time)
-try {
-    $tzId = 'W. Europe Standard Time'  # UTC+1 (e.g. Oslo, Berlin, etc.)
-    $isAdmin = ([Security.Principal.WindowsPrincipal] `
-        [Security.Principal.WindowsIdentity]::GetCurrent()
-    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-    if ($isAdmin) {
-        if (Get-Command Set-TimeZone -ErrorAction SilentlyContinue) {
-            Set-TimeZone -Id $tzId
+    try {
+        $tzId = 'W. Europe Standard Time'
+        if ($script:IsAdmin) {
+            if (Get-Command Set-TimeZone -ErrorAction SilentlyContinue) {
+                Set-TimeZone -Id $tzId
+            } else {
+                & tzutil.exe /s $tzId
+            }
         }
         else {
-            & tzutil.exe /s $tzId
+            Write-Warning "Skipping time zone change: run settings.ps1 as Administrator to change the system time zone."
         }
     }
-    else {
-        Write-Warning "Skipping time zone change: run settings.ps1 as Administrator to change the system time zone."
+    catch {
+        Write-Warning "Failed to set time zone: $_"
+    }
+
+    $intlKey = 'HKCU:\Control Panel\International'
+    if (-not (Test-Path $intlKey)) { New-Item -Path $intlKey -Force | Out-Null }
+
+    New-ItemProperty -Path $intlKey -Name 'sShortDate' -PropertyType String -Value 'yyyy-MM-dd'        -Force | Out-Null
+    New-ItemProperty -Path $intlKey -Name 'sLongDate'  -PropertyType String -Value 'dddd, dd MMMM yyyy' -Force | Out-Null
+
+    $clockAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+    if (-not (Test-Path $clockAdvancedKey)) { New-Item -Path $clockAdvancedKey -Force | Out-Null }
+
+    New-ItemProperty -Path $clockAdvancedKey -Name 'ShowSecondsInSystemClock' -PropertyType DWord -Value 1 -Force | Out-Null
+
+    Write-Host "Time & language > Date & time set." -ForegroundColor Blue
+}
+
+# =====================================================================
+# 11) TYPING: text suggestions
+# =====================================================================
+function Set-TypingSettings {
+    Write-Section "Typing: text suggestions"
+
+    $inputSettingsKey = 'HKCU:\Software\Microsoft\Input\Settings'
+    if (-not (Test-Path $inputSettingsKey)) { New-Item -Path $inputSettingsKey -Force | Out-Null }
+
+    New-ItemProperty -Path $inputSettingsKey -Name 'EnableHwkbTextPrediction' -PropertyType DWord -Value 1 -Force | Out-Null
+    New-ItemProperty -Path $inputSettingsKey -Name 'MultilingualEnabled'      -PropertyType DWord -Value 1 -Force | Out-Null
+
+    Write-Host "Time & language > Typing set." -ForegroundColor Blue
+}
+
+# =====================================================================
+# Run All
+# =====================================================================
+function Invoke-All {
+    Set-DisplayScaling100
+    Set-PowerTimeouts
+    Set-EnergySaverThreshold
+    Set-ClipboardSettings
+    Enable-WindowsFeatures
+    Apply-Wallpaper
+    Apply-LockScreen
+    Set-StartMenuSettings
+    Apply-AccountPicture
+    Set-DateTimeSettings
+    Set-TypingSettings
+}
+
+# =====================================================================
+# Final prompt: log off / reboot
+# =====================================================================
+function Prompt-RebootOrLogoff {
+    Write-Host ""
+    Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
+    Write-Host ""
+    Write-Host "[L] Log off"    -ForegroundColor Magenta
+    Write-Host "[R] Reboot"     -ForegroundColor Magenta
+    Write-Host "[N] Do nothing" -ForegroundColor Magenta
+    Write-Host ""
+
+    Write-Host "Choose an option [L/R/N]: " -ForegroundColor Magenta -NoNewLine
+    $action = Read-Host
+    Write-Host ""
+
+    switch -Regex ($action) {
+        '^[Ll]$' {
+            Write-Host "Logging off..." -ForegroundColor Blue
+            Start-Process -FilePath "logoff.exe" -WindowStyle Hidden
+        }
+        '^[Rr]$' {
+            Write-Host "Rebooting..." -ForegroundColor Blue
+            Start-Process -FilePath "shutdown.exe" -ArgumentList "/r /t 0" -WindowStyle Hidden
+        }
+        default {
+            Write-Host "No action selected. You can log off or reboot later to apply all changes fully." -ForegroundColor Blue
+        }
     }
 }
-catch {
-    Write-Warning "Failed to set time zone: $_"
-}
-
-# Per-user regional/date/time formatting
-$intlKey = 'HKCU:\Control Panel\International'
-if (-not (Test-Path $intlKey)) {
-    New-Item -Path $intlKey -Force | Out-Null
-}
-
-# Short date → 2017-04-05
-New-ItemProperty -Path $intlKey -Name 'sShortDate' -PropertyType String -Value 'yyyy-MM-dd'          -Force | Out-Null
-
-# Long date → Wednesday, 5 April, 2017
-New-ItemProperty -Path $intlKey -Name 'sLongDate' -PropertyType String -Value 'dddd, dd MMMM yyyy'   -Force | Out-Null
-
-# Show seconds in the system tray clock
-$clockAdvancedKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
-if (-not (Test-Path $clockAdvancedKey)) {
-    New-Item -Path $clockAdvancedKey -Force | Out-Null
-}
-
-New-ItemProperty -Path $clockAdvancedKey `
-                 -Name 'ShowSecondsInSystemClock' `
-                 -PropertyType DWord `
-                 -Value 1 `
-                 -Force | Out-Null
-
-Write-Host "Time & language > Date & time set." -ForegroundColor Blue
-Write-Host ""
 
 # =====================================================================
-# TYPING: text suggestions
+# MENU
 # =====================================================================
-
-$inputSettingsKey = 'HKCU:\Software\Microsoft\Input\Settings'
-
-if (-not (Test-Path $inputSettingsKey)) {
-    New-Item -Path $inputSettingsKey -Force | Out-Null
+function Show-Menu {
+    Write-Host ""
+    Write-Host "==== SETTINGS MENU ====" -ForegroundColor Yellow
+    Write-Host " 1) Display: 100% scaling"
+    Write-Host " 2) Power: screen off & sleep"
+    Write-Host " 3) Energy saver: threshold"
+    Write-Host " 4) Clipboard: history + cloud sync"
+    Write-Host " 5) Optional features: Hyper-V / WSL / Sandbox (Admin)"
+    Write-Host " 6) Wallpaper"
+    Write-Host " 7) Lock screen (Admin)"
+    Write-Host " 8) Start menu tweaks"
+    Write-Host " 9) Account picture (Admin)"
+    Write-Host "10) Date & time (TZ Admin, formats user)"
+    Write-Host "11) Typing suggestions"
+    Write-Host ""
+    Write-Host " A) Run ALL"
+    Write-Host " R) Prompt reboot/logoff"
+    Write-Host " Q) Quit"
+    Write-Host ""
 }
 
-# Show text suggestions when typing on the physical keyboard
-New-ItemProperty -Path $inputSettingsKey `
-                 -Name 'EnableHwkbTextPrediction' `
-                 -PropertyType DWord `
-                 -Value 1 `
-                 -Force | Out-Null
+while ($true) {
+    Show-Menu
+    Write-Host "Select an option: " -ForegroundColor Yellow -NoNewLine
+    $choice = Read-Host
 
-# Multilingual text suggestions
-New-ItemProperty -Path $inputSettingsKey `
-                 -Name 'MultilingualEnabled' `
-                 -PropertyType DWord `
-                 -Value 1 `
-                 -Force | Out-Null
-
-Write-Host "Time & language > Typing set." -ForegroundColor Blue
-Write-Host ""
-
-# =====================================================================
-# FINAL PROMPT: log off / reboot
-# =====================================================================
-
-Write-Host "Done. Please sign out and back in (or reboot) to fully apply changes." -ForegroundColor Green
-Write-Host ""
-
-Write-Host "[L] Log off"    -ForegroundColor Magenta
-Write-Host "[R] Reboot"     -ForegroundColor Magenta
-Write-Host "[N] Do nothing" -ForegroundColor Magenta
-Write-Host ""
-
-Write-Host "Choose an option [L/R/N]: " -ForegroundColor Magenta -NoNewLine
-$action = Read-Host
-Write-Host ""
-
-switch -Regex ($action) {
-    '^[Ll]$' {
-        Write-Host "Logging off..." -ForegroundColor Blue
-        Start-Process -FilePath "logoff.exe" -WindowStyle Hidden
-    }
-    '^[Rr]$' {
-        Write-Host "Rebooting..." -ForegroundColor Blue
-        Start-Process -FilePath "shutdown.exe" -ArgumentList "/r /t 0" -WindowStyle Hidden
-    }
-    default {
-        Write-Host "No action selected. You can log off or reboot later to apply all changes fully." -ForegroundColor Blue
+    switch -Regex ($choice) {
+        '^\s*1\s*$'  { Set-DisplayScaling100 }
+        '^\s*2\s*$'  { Set-PowerTimeouts }
+        '^\s*3\s*$'  { Set-EnergySaverThreshold }
+        '^\s*4\s*$'  { Set-ClipboardSettings }
+        '^\s*5\s*$'  { Enable-WindowsFeatures }
+        '^\s*6\s*$'  { Apply-Wallpaper }
+        '^\s*7\s*$'  { Apply-LockScreen }
+        '^\s*8\s*$'  { Set-StartMenuSettings }
+        '^\s*9\s*$'  { Apply-AccountPicture }
+        '^\s*10\s*$' { Set-DateTimeSettings }
+        '^\s*11\s*$' { Set-TypingSettings }
+        '^\s*[Aa]\s*$' {
+            Invoke-All
+            Prompt-RebootOrLogoff
+        }
+        '^\s*[Rr]\s*$' { Prompt-RebootOrLogoff }
+        '^\s*[Qq]\s*$' { break }
+        default { Write-Host "Invalid option." -ForegroundColor Red }
     }
 }

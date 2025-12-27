@@ -38,8 +38,9 @@ git -C windows reset --hard
 ### Settings
 
 - System > Display > Night light
+- System > Display > Advanced display
 - System > Sound
 - System > Clipboard > Clipboard history across your devices
-- Personalisation > Colours > Accent colour (#7A6D98)
+- Personalisation > Colours > Accent colour (#7A6D98 or #686BC6)
 - Accounts > Sign-in options
 - Time & Language > Language & region
