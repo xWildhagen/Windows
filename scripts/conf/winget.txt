@@ -25,6 +25,7 @@ AntibodySoftware.WizTree
 #############################
 # MiKTeX.MiKTeX
 # StrawberryPerl.StrawberryPerl
+# Hashicorp.Terraform
 
 #############################
 # GAMES
