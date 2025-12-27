@@ -17,7 +17,7 @@ Write-Host "=== stuff.ps1 ===" -ForegroundColor Blue
 # ---------------------------
 function Write-Section($Title) {
     Write-Host ""
-    Write-Host "== $Title ==" -ForegroundColor Cyan
+    Write-Host "== $Title ==" -ForegroundColor Blue
 }
 
 # ---------------------------
@@ -133,25 +133,22 @@ function Invoke-All {
 # =====================================================================
 function Show-Menu {
     Write-Host ""
-    Write-Host "==== STUFF MENU ====" -ForegroundColor Yellow
+    Write-Host "==== STUFF MENU ====" -ForegroundColor Blue
     Write-Host " 1) Apply Windows Terminal config"
     Write-Host " 2) Replace Edge local folder (copy from OneDrive)"
-    Write-Host ""
-    Write-Host " A) Run ALL"
-    Write-Host " Q) Quit"
+    Write-Host " A) Run ALL" -ForegroundColor Blue
     Write-Host ""
 }
 
 while ($true) {
     Show-Menu
-    Write-Host "Select an option: " -ForegroundColor Yellow -NoNewLine
+    Write-Host "Select an option: " -ForegroundColor Magenta -NoNewLine
     $choice = Read-Host
 
     switch -Regex ($choice) {
         '^\s*1\s*$'   { Apply-WindowsTerminalConfig }
         '^\s*2\s*$'   { Replace-EdgeLocalFolderFromOneDrive }
         '^\s*[Aa]\s*$'{ Invoke-All }
-        '^\s*[Qq]\s*$'{ break }
         default       { Write-Host "Invalid option." -ForegroundColor Red }
     }
 }
