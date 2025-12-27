@@ -43,7 +43,6 @@ Write-Host "Wallpaper image:  $wallpaperPath"
 Write-Host "Lock screen:      $lockScreenPath"
 Write-Host "Profile picture:  $profilePicPath"
 Write-Host "Admin:            $IsAdmin"
-Write-Host ""
 
 # =====================================================================
 # 1) DISPLAY: 100% scaling
@@ -494,22 +493,23 @@ function Prompt-RebootOrLogoff {
 # MENU
 # =====================================================================
 function Show-Menu {
-    Write-Host "==== SETTINGS MENU ====" -ForegroundColor Blue
-    Write-Host " 1) Display: 100% scaling" -ForegroundColor Blue
-    Write-Host " 2) Power: screen off & sleep" -ForegroundColor Blue
-    Write-Host " 3) Energy saver: threshold" -ForegroundColor Blue
-    Write-Host " 4) Clipboard: history + cloud sync" -ForegroundColor Blue
-    Write-Host " 5) Optional features: Hyper-V / WSL / Sandbox (Admin)" -ForegroundColor Blue
-    Write-Host " 6) Wallpaper" -ForegroundColor Blue
-    Write-Host " 7) Lock screen (Admin)" -ForegroundColor Blue
-    Write-Host " 8) Start menu tweaks" -ForegroundColor Blue
-    Write-Host " 9) Account picture (Admin)" -ForegroundColor Blue
-    Write-Host "10) Date & time (TZ Admin, formats user)" -ForegroundColor Blue
-    Write-Host "11) Typing suggestions" -ForegroundColor Blue
     Write-Host ""
-    Write-Host " A) Run ALL" -ForegroundColor Blue
-    Write-Host " R) Prompt reboot/logoff" -ForegroundColor Blue
-    Write-Host " Q) Quit" -ForegroundColor Blue
+    Write-Host "==== SETTINGS MENU ====" -ForegroundColor Blue
+    Write-Host " 1) Display: 100% scaling"
+    Write-Host " 2) Power: screen off & sleep"
+    Write-Host " 3) Energy saver: threshold"
+    Write-Host " 4) Clipboard: history + cloud sync"
+    Write-Host " 5) Optional features: Hyper-V / WSL / Sandbox (Admin)"
+    Write-Host " 6) Wallpaper"
+    Write-Host " 7) Lock screen (Admin)"
+    Write-Host " 8) Start menu tweaks"
+    Write-Host " 9) Account picture (Admin)"
+    Write-Host "10) Date & time (TZ Admin, formats user)"
+    Write-Host "11) Typing suggestions"
+    Write-Host ""
+    Write-Host " A) Run ALL"
+    Write-Host " R) Prompt reboot/logoff"
+    Write-Host " Q) Quit"
     Write-Host ""
 }
 
