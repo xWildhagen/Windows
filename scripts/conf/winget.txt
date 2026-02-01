@@ -3,7 +3,7 @@
 #############################
 Git.Git
 Microsoft.OneDrive
-Google.GoogleDrive
+# Google.GoogleDrive
 WireGuard.WireGuard
 RedHat.VirtViewer
 Logitech.GHUB
