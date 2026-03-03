@@ -1,0 +1,44 @@
+#############################
+# MAIN
+#############################
+Git.Git
+Microsoft.OneDrive
+# Google.GoogleDrive
+WireGuard.WireGuard
+RedHat.VirtViewer
+Logitech.GHUB
+Microsoft.Edge
+RazerInc.RazerInstaller.Synapse4
+RamenSoftware.Windhawk
+Microsoft.PowerShell
+Microsoft.PowerToys
+Microsoft.VisualStudioCode
+M2Team.NanaZip
+Microsoft.WindowsTerminal
+Mega.MEGASync
+Proton.ProtonVPN
+Microsoft.WSL
+DEVCOM.JetBrainsMonoNerdFont
+AntibodySoftware.WizTree
+# Brave.Brave
+Google.Antigravity
+# Mozilla.Firefox
+# Google.Chrome
+
+#############################
+# STUFF
+#############################
+# MiKTeX.MiKTeX
+# StrawberryPerl.StrawberryPerl
+# Hashicorp.Terraform
+# Python.Python.3.14
+# Python.PythonInstallManager
+
+#############################
+# GAMES
+#############################
+Microsoft.GameInput
+MoonlightGameStreamingProject.Moonlight
+Valve.Steam
+# ElectronicArts.EADesktop
+# RiotGames.LeagueOfLegends.EUW
