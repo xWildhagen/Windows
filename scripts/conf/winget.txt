@@ -23,7 +23,7 @@ AntibodySoftware.WizTree
 # Brave.Brave
 Google.Antigravity
 # Mozilla.Firefox
-# Google.Chrome
+Google.Chrome
 
 #############################
 # STUFF
