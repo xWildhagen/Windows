@@ -24,6 +24,7 @@ AntibodySoftware.WizTree
 Google.Antigravity
 # Mozilla.Firefox
 Google.Chrome
+Proton.ProtonDrive
 
 #############################
 # STUFF
